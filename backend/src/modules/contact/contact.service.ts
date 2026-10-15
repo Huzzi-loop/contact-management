@@ -134,6 +134,13 @@ export class ContactService {
 
     return updated;
   }
+
+  async deleteContact(id: string): Promise<void> {
+    const deleted = await this.contactRepo.softDelete(id);
+    if (!deleted) {
+      throw new NotFoundError(`Contact with ID "${id}" not found`);
+    }
+  }
 }
 
 export const contactService = new ContactService();

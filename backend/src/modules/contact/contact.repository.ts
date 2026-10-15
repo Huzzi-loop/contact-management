@@ -169,6 +169,29 @@ export class ContactRepository {
       metadata,
     });
   }
+
+  async softDelete(id: string): Promise<Contact | null> {
+    return await db.transaction(async (tx) => {
+      const [deletedContact] = await tx
+        .update(contacts)
+        .set({
+          deletedAt: new Date(),
+        })
+        .where(and(eq(contacts.id, id), isNull(contacts.deletedAt)))
+        .returning();
+
+      if (!deletedContact) return null;
+
+      // Log CONTACT_DELETED activity
+      await tx.insert(contactActivities).values({
+        contactId: id,
+        type: 'CONTACT_DELETED',
+        description: 'Contact was archived / deleted',
+      });
+
+      return deletedContact;
+    });
+  }
 }
 
 export const contactRepository = new ContactRepository();

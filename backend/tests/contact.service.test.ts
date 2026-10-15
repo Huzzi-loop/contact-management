@@ -18,6 +18,7 @@ describe('ContactService Unit Tests - createContact', () => {
       findByIdWithDetails: vi.fn(),
       updateWithOCC: vi.fn(),
       logActivity: vi.fn(),
+      softDelete: vi.fn(),
     };
     mockTagRepo = {
       findByIds: vi.fn(),
@@ -237,6 +238,25 @@ describe('ContactService Unit Tests - createContact', () => {
       ).rejects.toThrow(ConflictError);
 
       expect(mockContactRepo.updateWithOCC).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteContact', () => {
+    it('should successfully soft delete contact', async () => {
+      (mockContactRepo.softDelete as any).mockResolvedValue({
+        id: 'c-100',
+        deletedAt: new Date(),
+      });
+
+      await expect(contactService.deleteContact('c-100')).resolves.toBeUndefined();
+      expect(mockContactRepo.softDelete).toHaveBeenCalledWith('c-100');
+    });
+
+    it('should throw NotFoundError if contact is not found or already deleted', async () => {
+      (mockContactRepo.softDelete as any).mockResolvedValue(null);
+
+      await expect(contactService.deleteContact('c-missing')).rejects.toThrow(NotFoundError);
+      expect(mockContactRepo.softDelete).toHaveBeenCalledWith('c-missing');
     });
   });
 });

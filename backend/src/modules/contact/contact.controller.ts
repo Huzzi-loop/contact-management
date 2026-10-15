@@ -33,6 +33,16 @@ export class ContactController {
       next(error);
     }
   };
+
+  deleteContact = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const id = req.params.id as string;
+      await this.service.deleteContact(id);
+      return ApiResponse.success(res, { id }, 'Contact deleted successfully');
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 export const contactController = new ContactController();
