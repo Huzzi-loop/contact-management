@@ -32,6 +32,8 @@ export interface GetContactsOptions {
   sortOrder?: 'asc' | 'desc';
   page?: number;
   limit?: number;
+  tagId?: string;
+  company?: string;
 }
 
 export interface PaginationMeta {
@@ -177,15 +179,19 @@ export class ContactService {
     const sortBy = options.sortBy || 'createdAt';
     const sortOrder = options.sortOrder || 'desc';
     const searchTerm = options.search;
+    const tagId = options.tagId;
+    const company = options.company;
 
     const [total, data] = await Promise.all([
-      this.contactRepo.countContacts({ searchTerm }),
+      this.contactRepo.countContacts({ searchTerm, tagId, company }),
       this.contactRepo.findContacts({
         searchTerm,
         sortBy,
         sortOrder,
         page,
         limit,
+        tagId,
+        company,
       }),
     ]);
 

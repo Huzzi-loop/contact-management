@@ -79,6 +79,12 @@ export const getContactsQuerySchema = Joi.object({
     'number.min': 'limit must be at least 1',
     'number.max': 'limit cannot exceed 100',
   }),
+  tagId: Joi.string().uuid().optional().messages({
+    'string.guid': 'tagId must be a valid UUID',
+  }),
+  company: Joi.string().trim().max(150).allow('').optional().messages({
+    'string.max': 'company filter cannot exceed 150 characters',
+  }),
 });
 
 export const searchContactsQuerySchema = getContactsQuerySchema;

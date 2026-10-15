@@ -235,5 +235,34 @@ describe('Contact Validator Unit Tests - Get/Search Contacts Query', () => {
     expect(error).toBeDefined();
     expect(error?.details[0].message).toContain('page must be an integer');
   });
+
+  it('should accept valid tagId UUID and company filter', () => {
+    const { error, value } = getContactsQuerySchema.validate({
+      tagId: '123e4567-e89b-12d3-a456-426614174000',
+      company: 'Acme Corp',
+    });
+
+    expect(error).toBeUndefined();
+    expect(value.tagId).toBe('123e4567-e89b-12d3-a456-426614174000');
+    expect(value.company).toBe('Acme Corp');
+  });
+
+  it('should reject non-UUID tagId', () => {
+    const { error } = getContactsQuerySchema.validate({
+      tagId: 'invalid-tag-uuid',
+    });
+
+    expect(error).toBeDefined();
+    expect(error?.details[0].message).toContain('tagId must be a valid UUID');
+  });
+
+  it('should reject company longer than 150 characters', () => {
+    const { error } = getContactsQuerySchema.validate({
+      company: 'x'.repeat(151),
+    });
+
+    expect(error).toBeDefined();
+    expect(error?.details[0].message).toContain('company filter cannot exceed 150 characters');
+  });
 });
 

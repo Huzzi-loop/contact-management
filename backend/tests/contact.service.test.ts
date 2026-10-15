@@ -329,13 +329,19 @@ describe('ContactService Unit Tests - createContact', () => {
 
       const result = await contactService.getContacts('Alice');
 
-      expect(mockContactRepo.countContacts).toHaveBeenCalledWith({ searchTerm: 'Alice' });
+      expect(mockContactRepo.countContacts).toHaveBeenCalledWith({
+        searchTerm: 'Alice',
+        tagId: undefined,
+        company: undefined,
+      });
       expect(mockContactRepo.findContacts).toHaveBeenCalledWith({
         searchTerm: 'Alice',
         sortBy: 'createdAt',
         sortOrder: 'desc',
         page: 1,
         limit: 10,
+        tagId: undefined,
+        company: undefined,
       });
       expect(result.data).toEqual(dummyResults);
       expect(result.meta).toEqual({
@@ -358,13 +364,19 @@ describe('ContactService Unit Tests - createContact', () => {
         limit: 10,
       });
 
-      expect(mockContactRepo.countContacts).toHaveBeenCalledWith({ searchTerm: 'Smith' });
+      expect(mockContactRepo.countContacts).toHaveBeenCalledWith({
+        searchTerm: 'Smith',
+        tagId: undefined,
+        company: undefined,
+      });
       expect(mockContactRepo.findContacts).toHaveBeenCalledWith({
         searchTerm: 'Smith',
         sortBy: 'name',
         sortOrder: 'asc',
         page: 2,
         limit: 10,
+        tagId: undefined,
+        company: undefined,
       });
       expect(result.meta).toEqual({
         total: 25,
@@ -374,19 +386,51 @@ describe('ContactService Unit Tests - createContact', () => {
       });
     });
 
-    it('should calculate 0 totalPages when total is 0', async () => {
-      (mockContactRepo.countContacts as any).mockResolvedValue(0);
-      (mockContactRepo.findContacts as any).mockResolvedValue([]);
+    it('should call repository with tagId and company filter parameters', async () => {
+      (mockContactRepo.countContacts as any).mockResolvedValue(5);
+      (mockContactRepo.findContacts as any).mockResolvedValue(dummyResults);
 
-      const result = await contactService.getContacts();
+      const result = await contactService.getContacts({
+        tagId: 'tag-123',
+        company: 'Acme',
+      });
 
-      expect(mockContactRepo.countContacts).toHaveBeenCalledWith({ searchTerm: undefined });
+      expect(mockContactRepo.countContacts).toHaveBeenCalledWith({
+        searchTerm: undefined,
+        tagId: 'tag-123',
+        company: 'Acme',
+      });
       expect(mockContactRepo.findContacts).toHaveBeenCalledWith({
         searchTerm: undefined,
         sortBy: 'createdAt',
         sortOrder: 'desc',
         page: 1,
         limit: 10,
+        tagId: 'tag-123',
+        company: 'Acme',
+      });
+      expect(result.meta.total).toBe(5);
+    });
+
+    it('should calculate 0 totalPages when total is 0', async () => {
+      (mockContactRepo.countContacts as any).mockResolvedValue(0);
+      (mockContactRepo.findContacts as any).mockResolvedValue([]);
+
+      const result = await contactService.getContacts();
+
+      expect(mockContactRepo.countContacts).toHaveBeenCalledWith({
+        searchTerm: undefined,
+        tagId: undefined,
+        company: undefined,
+      });
+      expect(mockContactRepo.findContacts).toHaveBeenCalledWith({
+        searchTerm: undefined,
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
+        page: 1,
+        limit: 10,
+        tagId: undefined,
+        company: undefined,
       });
       expect(result.data).toEqual([]);
       expect(result.meta).toEqual({

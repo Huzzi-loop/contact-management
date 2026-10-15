@@ -26,6 +26,8 @@ export interface ContactFindOptions {
   sortOrder?: 'asc' | 'desc';
   page?: number;
   limit?: number;
+  tagId?: string;
+  company?: string;
 }
 
 export class ContactRepository {
@@ -240,7 +242,11 @@ export class ContactRepository {
     }));
   }
 
-  async countContacts(options: { searchTerm?: string } = {}): Promise<number> {
+  private buildFilterConditions(options: {
+    searchTerm?: string;
+    tagId?: string;
+    company?: string;
+  }) {
     const conditions = [isNull(contacts.deletedAt)];
 
     if (options.searchTerm && options.searchTerm.trim().length > 0) {
@@ -255,6 +261,30 @@ export class ContactRepository {
         )!
       );
     }
+
+    if (options.company && options.company.trim().length > 0) {
+      conditions.push(ilike(contacts.company, `%${options.company.trim()}%`));
+    }
+
+    if (options.tagId) {
+      conditions.push(
+        sql`EXISTS (
+          SELECT 1 FROM ${contactTags}
+          WHERE ${contactTags.contactId} = ${contacts.id}
+          AND ${contactTags.tagId} = ${options.tagId}
+        )`
+      );
+    }
+
+    return conditions;
+  }
+
+  async countContacts(options: {
+    searchTerm?: string;
+    tagId?: string;
+    company?: string;
+  } = {}): Promise<number> {
+    const conditions = this.buildFilterConditions(options);
 
     const [result] = await db
       .select({ count: sql<number>`count(*)::int` })
@@ -271,21 +301,11 @@ export class ContactRepository {
       sortOrder = 'desc',
       page = 1,
       limit = 10,
+      tagId,
+      company,
     } = options;
-    const conditions = [isNull(contacts.deletedAt)];
 
-    if (searchTerm && searchTerm.trim().length > 0) {
-      const term = searchTerm.trim();
-      conditions.push(
-        or(
-          ilike(contacts.firstName, `%${term}%`),
-          ilike(contacts.lastName, `%${term}%`),
-          ilike(contacts.email, `%${term}%`),
-          ilike(contacts.phone, `%${term}%`),
-          sql`LOWER(${contacts.firstName} || ' ' || ${contacts.lastName}) LIKE LOWER(${'%' + term + '%'})`
-        )!
-      );
-    }
+    const conditions = this.buildFilterConditions({ searchTerm, tagId, company });
 
     const orderFn = sortOrder === 'asc' ? asc : desc;
     const orderByClause =

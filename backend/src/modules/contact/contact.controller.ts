@@ -46,12 +46,14 @@ export class ContactController {
 
   getContacts = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { search, sortBy, sortOrder, page, limit } = req.query as {
+      const { search, sortBy, sortOrder, page, limit, tagId, company } = req.query as {
         search?: string;
         sortBy?: 'name' | 'createdAt';
         sortOrder?: 'asc' | 'desc';
         page?: any;
         limit?: any;
+        tagId?: string;
+        company?: string;
       };
       const result = await this.service.getContacts({
         search,
@@ -59,6 +61,8 @@ export class ContactController {
         sortOrder,
         page: page !== undefined ? Number(page) : undefined,
         limit: limit !== undefined ? Number(limit) : undefined,
+        tagId,
+        company,
       });
       return ApiResponse.success(res, result.data, 'Contacts retrieved successfully', 200, result.meta);
     } catch (error) {
