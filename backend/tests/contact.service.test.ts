@@ -21,6 +21,7 @@ describe('ContactService Unit Tests - createContact', () => {
       softDelete: vi.fn(),
       findAllActive: vi.fn(),
       searchContacts: vi.fn(),
+      findContacts: vi.fn(),
     };
     mockTagRepo = {
       findByIds: vi.fn(),
@@ -304,38 +305,66 @@ describe('ContactService Unit Tests - createContact', () => {
     });
   });
 
-  describe('getContacts (with Search)', () => {
-    it('should call repository searchContacts with searchTerm and limit 10', async () => {
-      const dummyResults = [
-        {
-          id: 'c-1',
-          firstName: 'Alice',
-          lastName: 'Smith',
-          email: 'alice@example.com',
-          phone: '555-1234',
-          company: 'Acme',
-          version: 1,
-          deletedAt: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          tags: [],
-        },
-      ];
+  describe('getContacts (with Search and Sorting)', () => {
+    const dummyResults = [
+      {
+        id: 'c-1',
+        firstName: 'Alice',
+        lastName: 'Smith',
+        email: 'alice@example.com',
+        phone: '555-1234',
+        company: 'Acme',
+        version: 1,
+        deletedAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        tags: [],
+      },
+    ];
 
-      (mockContactRepo.searchContacts as any).mockResolvedValue(dummyResults);
+    it('should call repository findContacts with search string, default sortBy (createdAt) and sortOrder (desc)', async () => {
+      (mockContactRepo.findContacts as any).mockResolvedValue(dummyResults);
 
       const result = await contactService.getContacts('Alice');
 
-      expect(mockContactRepo.searchContacts).toHaveBeenCalledWith('Alice', 10);
+      expect(mockContactRepo.findContacts).toHaveBeenCalledWith({
+        searchTerm: 'Alice',
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
+        limit: 10,
+      });
       expect(result).toEqual(dummyResults);
     });
 
-    it('should call repository searchContacts with undefined when no search term provided', async () => {
-      (mockContactRepo.searchContacts as any).mockResolvedValue([]);
+    it('should call repository findContacts with explicit sortBy and sortOrder', async () => {
+      (mockContactRepo.findContacts as any).mockResolvedValue(dummyResults);
 
-      const result = await contactService.getContacts(undefined);
+      const result = await contactService.getContacts({
+        search: 'Smith',
+        sortBy: 'name',
+        sortOrder: 'asc',
+      });
 
-      expect(mockContactRepo.searchContacts).toHaveBeenCalledWith(undefined, 10);
+      expect(mockContactRepo.findContacts).toHaveBeenCalledWith({
+        searchTerm: 'Smith',
+        sortBy: 'name',
+        sortOrder: 'asc',
+        limit: 10,
+      });
+      expect(result).toEqual(dummyResults);
+    });
+
+    it('should call repository findContacts with defaults when called with empty options or undefined', async () => {
+      (mockContactRepo.findContacts as any).mockResolvedValue([]);
+
+      const result = await contactService.getContacts();
+
+      expect(mockContactRepo.findContacts).toHaveBeenCalledWith({
+        searchTerm: undefined,
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
+        limit: 10,
+      });
       expect(result).toEqual([]);
     });
   });

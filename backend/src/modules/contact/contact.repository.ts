@@ -1,4 +1,4 @@
-import { eq, and, isNull, ne, desc, sql, inArray, ilike, or } from 'drizzle-orm';
+import { eq, and, isNull, ne, desc, asc, sql, inArray, ilike, or } from 'drizzle-orm';
 import { db } from '../../db';
 import {
   contacts,
@@ -18,6 +18,13 @@ export interface ContactWithTags extends Contact {
 export interface ContactWithDetails extends Contact {
   tags: Tag[];
   recentActivities: ContactActivity[];
+}
+
+export interface ContactFindOptions {
+  searchTerm?: string;
+  sortBy?: 'name' | 'createdAt';
+  sortOrder?: 'asc' | 'desc';
+  limit?: number;
 }
 
 export class ContactRepository {
@@ -232,7 +239,8 @@ export class ContactRepository {
     }));
   }
 
-  async searchContacts(searchTerm?: string, limit: number = 10): Promise<ContactWithTags[]> {
+  async findContacts(options: ContactFindOptions = {}): Promise<ContactWithTags[]> {
+    const { searchTerm, sortBy = 'createdAt', sortOrder = 'desc', limit = 10 } = options;
     const conditions = [isNull(contacts.deletedAt)];
 
     if (searchTerm && searchTerm.trim().length > 0) {
@@ -248,10 +256,17 @@ export class ContactRepository {
       );
     }
 
+    const orderFn = sortOrder === 'asc' ? asc : desc;
+    const orderByClause =
+      sortBy === 'name'
+        ? [orderFn(contacts.firstName), orderFn(contacts.lastName)]
+        : [orderFn(contacts.createdAt)];
+
     const contactList = await db
       .select()
       .from(contacts)
       .where(and(...conditions))
+      .orderBy(...orderByClause)
       .limit(limit);
 
     if (contactList.length === 0) return [];
@@ -285,6 +300,10 @@ export class ContactRepository {
       ...c,
       tags: tagMap.get(c.id) || [],
     }));
+  }
+
+  async searchContacts(searchTerm?: string, limit: number = 10): Promise<ContactWithTags[]> {
+    return this.findContacts({ searchTerm, limit });
   }
 }
 

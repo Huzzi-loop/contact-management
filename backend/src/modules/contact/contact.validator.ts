@@ -58,8 +58,17 @@ export const updateContactSchema = Joi.object({
     'object.min': 'At least one field must be provided to update',
   });
 
-export const searchContactsQuerySchema = Joi.object({
+export const getContactsQuerySchema = Joi.object({
   search: Joi.string().trim().max(100).allow('').optional().messages({
     'string.max': 'Search term cannot exceed 100 characters',
   }),
+  sortBy: Joi.string().valid('name', 'createdAt').default('createdAt').messages({
+    'any.only': 'sortBy must be one of: name, createdAt',
+  }),
+  sortOrder: Joi.string().valid('asc', 'desc').default('desc').messages({
+    'any.only': 'sortOrder must be one of: asc, desc',
+  }),
 });
+
+export const searchContactsQuerySchema = getContactsQuerySchema;
+

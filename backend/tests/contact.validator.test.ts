@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   createContactSchema,
   updateContactSchema,
+  getContactsQuerySchema,
   searchContactsQuerySchema,
 } from '../src/modules/contact/contact.validator';
 
@@ -129,25 +130,40 @@ describe('Contact Validator Unit Tests - Update Contact', () => {
   });
 });
 
-describe('Contact Validator Unit Tests - Search Contacts Query', () => {
-  it('should accept valid search query', () => {
-    const { error, value } = searchContactsQuerySchema.validate({
+describe('Contact Validator Unit Tests - Get/Search Contacts Query', () => {
+  it('should accept valid search query with default sortBy and sortOrder', () => {
+    const { error, value } = getContactsQuerySchema.validate({
       search: 'Alice',
     });
 
     expect(error).toBeUndefined();
     expect(value.search).toBe('Alice');
+    expect(value.sortBy).toBe('createdAt');
+    expect(value.sortOrder).toBe('desc');
   });
 
-  it('should accept empty object when search query parameter is omitted', () => {
-    const { error, value } = searchContactsQuerySchema.validate({});
+  it('should accept empty object and apply default sortBy and sortOrder', () => {
+    const { error, value } = getContactsQuerySchema.validate({});
 
     expect(error).toBeUndefined();
     expect(value.search).toBeUndefined();
+    expect(value.sortBy).toBe('createdAt');
+    expect(value.sortOrder).toBe('desc');
+  });
+
+  it('should accept valid sortBy name and sortOrder asc', () => {
+    const { error, value } = getContactsQuerySchema.validate({
+      sortBy: 'name',
+      sortOrder: 'asc',
+    });
+
+    expect(error).toBeUndefined();
+    expect(value.sortBy).toBe('name');
+    expect(value.sortOrder).toBe('asc');
   });
 
   it('should accept empty string for search parameter', () => {
-    const { error, value } = searchContactsQuerySchema.validate({
+    const { error, value } = getContactsQuerySchema.validate({
       search: '',
     });
 
@@ -156,12 +172,30 @@ describe('Contact Validator Unit Tests - Search Contacts Query', () => {
   });
 
   it('should reject search term exceeding 100 characters', () => {
-    const { error } = searchContactsQuerySchema.validate({
+    const { error } = getContactsQuerySchema.validate({
       search: 'a'.repeat(101),
     });
 
     expect(error).toBeDefined();
     expect(error?.details[0].message).toContain('Search term cannot exceed 100 characters');
+  });
+
+  it('should reject invalid sortBy option', () => {
+    const { error } = getContactsQuerySchema.validate({
+      sortBy: 'unsupportedField',
+    });
+
+    expect(error).toBeDefined();
+    expect(error?.details[0].message).toContain('sortBy must be one of: name, createdAt');
+  });
+
+  it('should reject invalid sortOrder option', () => {
+    const { error } = getContactsQuerySchema.validate({
+      sortOrder: 'ascending',
+    });
+
+    expect(error).toBeDefined();
+    expect(error?.details[0].message).toContain('sortOrder must be one of: asc, desc');
   });
 });
 

@@ -26,6 +26,12 @@ export interface UpdateContactDTO {
   company?: string | null;
 }
 
+export interface GetContactsOptions {
+  search?: string;
+  sortBy?: 'name' | 'createdAt';
+  sortOrder?: 'asc' | 'desc';
+}
+
 export class ContactService {
   constructor(
     private readonly contactRepo: ContactRepository = contactRepository,
@@ -146,8 +152,18 @@ export class ContactService {
     return this.contactRepo.findAllActive();
   }
 
-  async getContacts(searchTerm?: string): Promise<ContactWithTags[]> {
-    return this.contactRepo.searchContacts(searchTerm, 10);
+  async getContacts(optionsOrSearch?: string | GetContactsOptions): Promise<ContactWithTags[]> {
+    const options: GetContactsOptions =
+      typeof optionsOrSearch === 'string'
+        ? { search: optionsOrSearch }
+        : optionsOrSearch || {};
+
+    return this.contactRepo.findContacts({
+      searchTerm: options.search,
+      sortBy: options.sortBy || 'createdAt',
+      sortOrder: options.sortOrder || 'desc',
+      limit: 10,
+    });
   }
 }
 
