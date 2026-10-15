@@ -6,5 +6,6 @@ import { createContactSchema } from './contact.validator';
 const router = Router();
 
 router.post('/', validate(createContactSchema, 'body'), contactController.createContact);
+router.get('/:id', contactController.getContactById);
 
 export default router;

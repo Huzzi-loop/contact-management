@@ -2,10 +2,11 @@ import {
   ContactRepository,
   contactRepository,
   ContactWithTags,
+  ContactWithDetails,
 } from './contact.repository';
 import { TagRepository, tagRepository } from '../tag/tag.repository';
 import { NewContact } from '../../db/schema';
-import { ConflictError, BadRequestError } from '../../utils/apiError';
+import { ConflictError, BadRequestError, NotFoundError } from '../../utils/apiError';
 
 export interface CreateContactDTO {
   firstName: string;
@@ -52,6 +53,14 @@ export class ContactService {
     };
 
     return await this.contactRepo.create(newContactData, tagIds);
+  }
+
+  async getContactById(id: string): Promise<ContactWithDetails> {
+    const contact = await this.contactRepo.findByIdWithDetails(id);
+    if (!contact) {
+      throw new NotFoundError(`Contact with ID "${id}" not found`);
+    }
+    return contact;
   }
 }
 

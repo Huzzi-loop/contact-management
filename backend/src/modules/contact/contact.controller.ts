@@ -13,6 +13,16 @@ export class ContactController {
       next(error);
     }
   };
+
+  getContactById = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const id = req.params.id as string;
+      const contact = await this.service.getContactById(id);
+      return ApiResponse.success(res, contact, 'Contact retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 export const contactController = new ContactController();

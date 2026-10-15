@@ -1,4 +1,4 @@
-import { eq, and, isNull, ne } from 'drizzle-orm';
+import { eq, and, isNull, ne, desc } from 'drizzle-orm';
 import { db } from '../../db';
 import {
   contacts,
@@ -8,10 +8,16 @@ import {
   Contact,
   NewContact,
   Tag,
+  ContactActivity,
 } from '../../db/schema';
 
 export interface ContactWithTags extends Contact {
   tags: Tag[];
+}
+
+export interface ContactWithDetails extends Contact {
+  tags: Tag[];
+  recentActivities: ContactActivity[];
 }
 
 export class ContactRepository {
@@ -31,6 +37,43 @@ export class ContactRepository {
       .where(and(...conditions));
 
     return result[0] || null;
+  }
+
+  async findByIdWithDetails(id: string): Promise<ContactWithDetails | null> {
+    // 1. Fetch active contact
+    const [contact] = await db
+      .select()
+      .from(contacts)
+      .where(and(eq(contacts.id, id), isNull(contacts.deletedAt)));
+
+    if (!contact) return null;
+
+    // 2. Fetch associated tags
+    const assignedTags = await db
+      .select({
+        id: tags.id,
+        name: tags.name,
+        color: tags.color,
+        createdAt: tags.createdAt,
+        updatedAt: tags.updatedAt,
+      })
+      .from(contactTags)
+      .innerJoin(tags, eq(contactTags.tagId, tags.id))
+      .where(eq(contactTags.contactId, id));
+
+    // 3. Fetch recent activities (latest 10)
+    const recentActivities = await db
+      .select()
+      .from(contactActivities)
+      .where(eq(contactActivities.contactId, id))
+      .orderBy(desc(contactActivities.createdAt))
+      .limit(10);
+
+    return {
+      ...contact,
+      tags: assignedTags,
+      recentActivities,
+    };
   }
 
   async create(data: NewContact, tagIds: string[] = []): Promise<ContactWithTags> {
