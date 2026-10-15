@@ -1,6 +1,6 @@
-import { Tag } from '../db/schema';
-import { TagRepository, tagRepository, CreateTagDTO } from '../repositories/tag.repository';
-import { ConflictError, NotFoundError } from '../utils/apiError';
+import { Tag } from '../../db/schema';
+import { TagRepository, tagRepository, CreateTagDTO } from './tag.repository';
+import { ConflictError, NotFoundError } from '../../utils/apiError';
 
 export class TagService {
   constructor(private readonly repo: TagRepository = tagRepository) {}

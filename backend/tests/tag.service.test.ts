@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { TagService } from '../src/services/tag.service';
-import { TagRepository } from '../src/repositories/tag.repository';
+import { TagService } from '../src/modules/tag/tag.service';
+import { TagRepository } from '../src/modules/tag/tag.repository';
 import { ConflictError, NotFoundError } from '../src/utils/apiError';
 import { Tag } from '../src/db/schema';
 

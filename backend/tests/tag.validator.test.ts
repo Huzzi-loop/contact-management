@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createTagSchema } from '../src/validators/tag.validator';
+import { createTagSchema } from '../src/modules/tag/tag.validator';
 
 describe('Tag Validator Unit Tests', () => {
   it('should accept valid tag payload with custom color', () => {

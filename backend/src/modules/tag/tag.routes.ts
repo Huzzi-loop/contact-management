@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { tagController } from '../controllers/tag.controller';
-import { validate } from '../middlewares/validate.middleware';
-import { createTagSchema } from '../validators/tag.validator';
+import { tagController } from './tag.controller';
+import { validate } from '../../middlewares/validate.middleware';
+import { createTagSchema } from './tag.validator';
 
 const router = Router();
 

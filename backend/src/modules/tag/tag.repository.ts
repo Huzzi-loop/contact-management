@@ -1,6 +1,6 @@
 import { eq, inArray, asc } from 'drizzle-orm';
-import { db } from '../db';
-import { tags, Tag } from '../db/schema';
+import { db } from '../../db';
+import { tags, Tag } from '../../db/schema';
 
 export interface CreateTagDTO {
   name: string;

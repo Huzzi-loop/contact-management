@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { TagService, tagService } from '../services/tag.service';
-import { ApiResponse } from '../utils/apiResponse';
+import { TagService, tagService } from './tag.service';
+import { ApiResponse } from '../../utils/apiResponse';
 
 export class TagController {
   constructor(private readonly service: TagService = tagService) {}
