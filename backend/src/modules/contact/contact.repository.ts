@@ -1,4 +1,4 @@
-import { eq, and, isNull, ne, desc, sql, inArray } from 'drizzle-orm';
+import { eq, and, isNull, ne, desc, sql, inArray, ilike, or } from 'drizzle-orm';
 import { db } from '../../db';
 import {
   contacts,
@@ -198,6 +198,61 @@ export class ContactRepository {
       .select()
       .from(contacts)
       .where(isNull(contacts.deletedAt));
+
+    if (contactList.length === 0) return [];
+
+    // Batch fetch tags for all contacts to eliminate N+1 queries
+    const contactIds = contactList.map((c) => c.id);
+    const tagRows = await db
+      .select({
+        contactId: contactTags.contactId,
+        tag: {
+          id: tags.id,
+          name: tags.name,
+          color: tags.color,
+          createdAt: tags.createdAt,
+          updatedAt: tags.updatedAt,
+        },
+      })
+      .from(contactTags)
+      .innerJoin(tags, eq(contactTags.tagId, tags.id))
+      .where(inArray(contactTags.contactId, contactIds));
+
+    // Group tags by contactId
+    const tagMap = new Map<string, Tag[]>();
+    for (const row of tagRows) {
+      const existing = tagMap.get(row.contactId) || [];
+      existing.push(row.tag);
+      tagMap.set(row.contactId, existing);
+    }
+
+    return contactList.map((c) => ({
+      ...c,
+      tags: tagMap.get(c.id) || [],
+    }));
+  }
+
+  async searchContacts(searchTerm?: string, limit: number = 10): Promise<ContactWithTags[]> {
+    const conditions = [isNull(contacts.deletedAt)];
+
+    if (searchTerm && searchTerm.trim().length > 0) {
+      const term = searchTerm.trim();
+      conditions.push(
+        or(
+          ilike(contacts.firstName, `%${term}%`),
+          ilike(contacts.lastName, `%${term}%`),
+          ilike(contacts.email, `%${term}%`),
+          ilike(contacts.phone, `%${term}%`),
+          sql`LOWER(${contacts.firstName} || ' ' || ${contacts.lastName}) LIKE LOWER(${'%' + term + '%'})`
+        )!
+      );
+    }
+
+    const contactList = await db
+      .select()
+      .from(contacts)
+      .where(and(...conditions))
+      .limit(limit);
 
     if (contactList.length === 0) return [];
 

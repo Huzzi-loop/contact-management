@@ -57,3 +57,9 @@ export const updateContactSchema = Joi.object({
   .messages({
     'object.min': 'At least one field must be provided to update',
   });
+
+export const searchContactsQuerySchema = Joi.object({
+  search: Joi.string().trim().max(100).allow('').optional().messages({
+    'string.max': 'Search term cannot exceed 100 characters',
+  }),
+});

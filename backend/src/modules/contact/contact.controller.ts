@@ -44,9 +44,10 @@ export class ContactController {
     }
   };
 
-  getContacts = async (_req: Request, res: Response, next: NextFunction) => {
+  getContacts = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const contacts = await this.service.getAllContacts();
+      const search = req.query.search as string | undefined;
+      const contacts = await this.service.getContacts(search);
       return ApiResponse.success(res, contacts, 'Contacts retrieved successfully');
     } catch (error) {
       next(error);

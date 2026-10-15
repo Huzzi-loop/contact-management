@@ -20,6 +20,7 @@ describe('ContactService Unit Tests - createContact', () => {
       logActivity: vi.fn(),
       softDelete: vi.fn(),
       findAllActive: vi.fn(),
+      searchContacts: vi.fn(),
     };
     mockTagRepo = {
       findByIds: vi.fn(),
@@ -300,6 +301,42 @@ describe('ContactService Unit Tests - createContact', () => {
       expect(result).toHaveLength(2);
       expect(result[0].firstName).toBe('John');
       expect(result[0].tags).toHaveLength(1);
+    });
+  });
+
+  describe('getContacts (with Search)', () => {
+    it('should call repository searchContacts with searchTerm and limit 10', async () => {
+      const dummyResults = [
+        {
+          id: 'c-1',
+          firstName: 'Alice',
+          lastName: 'Smith',
+          email: 'alice@example.com',
+          phone: '555-1234',
+          company: 'Acme',
+          version: 1,
+          deletedAt: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          tags: [],
+        },
+      ];
+
+      (mockContactRepo.searchContacts as any).mockResolvedValue(dummyResults);
+
+      const result = await contactService.getContacts('Alice');
+
+      expect(mockContactRepo.searchContacts).toHaveBeenCalledWith('Alice', 10);
+      expect(result).toEqual(dummyResults);
+    });
+
+    it('should call repository searchContacts with undefined when no search term provided', async () => {
+      (mockContactRepo.searchContacts as any).mockResolvedValue([]);
+
+      const result = await contactService.getContacts(undefined);
+
+      expect(mockContactRepo.searchContacts).toHaveBeenCalledWith(undefined, 10);
+      expect(result).toEqual([]);
     });
   });
 });

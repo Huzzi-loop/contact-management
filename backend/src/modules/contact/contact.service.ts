@@ -145,6 +145,10 @@ export class ContactService {
   async getAllContacts(): Promise<ContactWithTags[]> {
     return this.contactRepo.findAllActive();
   }
+
+  async getContacts(searchTerm?: string): Promise<ContactWithTags[]> {
+    return this.contactRepo.searchContacts(searchTerm, 10);
+  }
 }
 
 export const contactService = new ContactService();

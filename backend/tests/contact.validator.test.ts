@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { createContactSchema, updateContactSchema } from '../src/modules/contact/contact.validator';
+import {
+  createContactSchema,
+  updateContactSchema,
+  searchContactsQuerySchema,
+} from '../src/modules/contact/contact.validator';
 
 describe('Contact Validator Unit Tests - Create Contact', () => {
   it('should accept valid contact with all fields', () => {
@@ -124,3 +128,40 @@ describe('Contact Validator Unit Tests - Update Contact', () => {
     expect(error?.details[0].message).toContain('First name cannot be empty');
   });
 });
+
+describe('Contact Validator Unit Tests - Search Contacts Query', () => {
+  it('should accept valid search query', () => {
+    const { error, value } = searchContactsQuerySchema.validate({
+      search: 'Alice',
+    });
+
+    expect(error).toBeUndefined();
+    expect(value.search).toBe('Alice');
+  });
+
+  it('should accept empty object when search query parameter is omitted', () => {
+    const { error, value } = searchContactsQuerySchema.validate({});
+
+    expect(error).toBeUndefined();
+    expect(value.search).toBeUndefined();
+  });
+
+  it('should accept empty string for search parameter', () => {
+    const { error, value } = searchContactsQuerySchema.validate({
+      search: '',
+    });
+
+    expect(error).toBeUndefined();
+    expect(value.search).toBe('');
+  });
+
+  it('should reject search term exceeding 100 characters', () => {
+    const { error } = searchContactsQuerySchema.validate({
+      search: 'a'.repeat(101),
+    });
+
+    expect(error).toBeDefined();
+    expect(error?.details[0].message).toContain('Search term cannot exceed 100 characters');
+  });
+});
+
