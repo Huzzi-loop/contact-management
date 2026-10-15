@@ -30,6 +30,20 @@ export interface GetContactsOptions {
   search?: string;
   sortBy?: 'name' | 'createdAt';
   sortOrder?: 'asc' | 'desc';
+  page?: number;
+  limit?: number;
+}
+
+export interface PaginationMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface PaginatedContactsResult {
+  data: ContactWithTags[];
+  meta: PaginationMeta;
 }
 
 export class ContactService {
@@ -152,18 +166,40 @@ export class ContactService {
     return this.contactRepo.findAllActive();
   }
 
-  async getContacts(optionsOrSearch?: string | GetContactsOptions): Promise<ContactWithTags[]> {
+  async getContacts(optionsOrSearch?: string | GetContactsOptions): Promise<PaginatedContactsResult> {
     const options: GetContactsOptions =
       typeof optionsOrSearch === 'string'
         ? { search: optionsOrSearch }
         : optionsOrSearch || {};
 
-    return this.contactRepo.findContacts({
-      searchTerm: options.search,
-      sortBy: options.sortBy || 'createdAt',
-      sortOrder: options.sortOrder || 'desc',
-      limit: 10,
-    });
+    const page = options.page && options.page > 0 ? options.page : 1;
+    const limit = options.limit && options.limit > 0 ? Math.min(options.limit, 100) : 10;
+    const sortBy = options.sortBy || 'createdAt';
+    const sortOrder = options.sortOrder || 'desc';
+    const searchTerm = options.search;
+
+    const [total, data] = await Promise.all([
+      this.contactRepo.countContacts({ searchTerm }),
+      this.contactRepo.findContacts({
+        searchTerm,
+        sortBy,
+        sortOrder,
+        page,
+        limit,
+      }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages,
+      },
+    };
   }
 }
 

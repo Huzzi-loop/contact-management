@@ -197,5 +197,43 @@ describe('Contact Validator Unit Tests - Get/Search Contacts Query', () => {
     expect(error).toBeDefined();
     expect(error?.details[0].message).toContain('sortOrder must be one of: asc, desc');
   });
+
+  it('should accept valid page and limit numbers', () => {
+    const { error, value } = getContactsQuerySchema.validate({
+      page: 3,
+      limit: 25,
+    });
+
+    expect(error).toBeUndefined();
+    expect(value.page).toBe(3);
+    expect(value.limit).toBe(25);
+  });
+
+  it('should reject page less than 1', () => {
+    const { error } = getContactsQuerySchema.validate({
+      page: 0,
+    });
+
+    expect(error).toBeDefined();
+    expect(error?.details[0].message).toContain('page must be at least 1');
+  });
+
+  it('should reject limit greater than 100', () => {
+    const { error } = getContactsQuerySchema.validate({
+      limit: 101,
+    });
+
+    expect(error).toBeDefined();
+    expect(error?.details[0].message).toContain('limit cannot exceed 100');
+  });
+
+  it('should reject non-integer page or limit', () => {
+    const { error } = getContactsQuerySchema.validate({
+      page: 2.5,
+    });
+
+    expect(error).toBeDefined();
+    expect(error?.details[0].message).toContain('page must be an integer');
+  });
 });
 

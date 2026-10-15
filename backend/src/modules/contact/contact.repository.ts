@@ -24,6 +24,7 @@ export interface ContactFindOptions {
   searchTerm?: string;
   sortBy?: 'name' | 'createdAt';
   sortOrder?: 'asc' | 'desc';
+  page?: number;
   limit?: number;
 }
 
@@ -239,8 +240,38 @@ export class ContactRepository {
     }));
   }
 
+  async countContacts(options: { searchTerm?: string } = {}): Promise<number> {
+    const conditions = [isNull(contacts.deletedAt)];
+
+    if (options.searchTerm && options.searchTerm.trim().length > 0) {
+      const term = options.searchTerm.trim();
+      conditions.push(
+        or(
+          ilike(contacts.firstName, `%${term}%`),
+          ilike(contacts.lastName, `%${term}%`),
+          ilike(contacts.email, `%${term}%`),
+          ilike(contacts.phone, `%${term}%`),
+          sql`LOWER(${contacts.firstName} || ' ' || ${contacts.lastName}) LIKE LOWER(${'%' + term + '%'})`
+        )!
+      );
+    }
+
+    const [result] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(contacts)
+      .where(and(...conditions));
+
+    return result ? Number(result.count) : 0;
+  }
+
   async findContacts(options: ContactFindOptions = {}): Promise<ContactWithTags[]> {
-    const { searchTerm, sortBy = 'createdAt', sortOrder = 'desc', limit = 10 } = options;
+    const {
+      searchTerm,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+      page = 1,
+      limit = 10,
+    } = options;
     const conditions = [isNull(contacts.deletedAt)];
 
     if (searchTerm && searchTerm.trim().length > 0) {
@@ -262,12 +293,15 @@ export class ContactRepository {
         ? [orderFn(contacts.firstName), orderFn(contacts.lastName)]
         : [orderFn(contacts.createdAt)];
 
+    const offset = (page - 1) * limit;
+
     const contactList = await db
       .select()
       .from(contacts)
       .where(and(...conditions))
       .orderBy(...orderByClause)
-      .limit(limit);
+      .limit(limit)
+      .offset(offset);
 
     if (contactList.length === 0) return [];
 

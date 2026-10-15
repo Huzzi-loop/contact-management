@@ -22,6 +22,7 @@ describe('ContactService Unit Tests - createContact', () => {
       findAllActive: vi.fn(),
       searchContacts: vi.fn(),
       findContacts: vi.fn(),
+      countContacts: vi.fn(),
     };
     mockTagRepo = {
       findByIds: vi.fn(),
@@ -305,7 +306,7 @@ describe('ContactService Unit Tests - createContact', () => {
     });
   });
 
-  describe('getContacts (with Search and Sorting)', () => {
+  describe('getContacts (with Search, Sorting, and Pagination)', () => {
     const dummyResults = [
       {
         id: 'c-1',
@@ -322,50 +323,78 @@ describe('ContactService Unit Tests - createContact', () => {
       },
     ];
 
-    it('should call repository findContacts with search string, default sortBy (createdAt) and sortOrder (desc)', async () => {
+    it('should call repository findContacts with search string, default pagination and sorting', async () => {
+      (mockContactRepo.countContacts as any).mockResolvedValue(1);
       (mockContactRepo.findContacts as any).mockResolvedValue(dummyResults);
 
       const result = await contactService.getContacts('Alice');
 
+      expect(mockContactRepo.countContacts).toHaveBeenCalledWith({ searchTerm: 'Alice' });
       expect(mockContactRepo.findContacts).toHaveBeenCalledWith({
         searchTerm: 'Alice',
         sortBy: 'createdAt',
         sortOrder: 'desc',
+        page: 1,
         limit: 10,
       });
-      expect(result).toEqual(dummyResults);
+      expect(result.data).toEqual(dummyResults);
+      expect(result.meta).toEqual({
+        total: 1,
+        page: 1,
+        limit: 10,
+        totalPages: 1,
+      });
     });
 
-    it('should call repository findContacts with explicit sortBy and sortOrder', async () => {
+    it('should call repository findContacts with custom page, limit, sortBy, and sortOrder', async () => {
+      (mockContactRepo.countContacts as any).mockResolvedValue(25);
       (mockContactRepo.findContacts as any).mockResolvedValue(dummyResults);
 
       const result = await contactService.getContacts({
         search: 'Smith',
         sortBy: 'name',
         sortOrder: 'asc',
+        page: 2,
+        limit: 10,
       });
 
+      expect(mockContactRepo.countContacts).toHaveBeenCalledWith({ searchTerm: 'Smith' });
       expect(mockContactRepo.findContacts).toHaveBeenCalledWith({
         searchTerm: 'Smith',
         sortBy: 'name',
         sortOrder: 'asc',
+        page: 2,
         limit: 10,
       });
-      expect(result).toEqual(dummyResults);
+      expect(result.meta).toEqual({
+        total: 25,
+        page: 2,
+        limit: 10,
+        totalPages: 3, // Math.ceil(25 / 10) = 3
+      });
     });
 
-    it('should call repository findContacts with defaults when called with empty options or undefined', async () => {
+    it('should calculate 0 totalPages when total is 0', async () => {
+      (mockContactRepo.countContacts as any).mockResolvedValue(0);
       (mockContactRepo.findContacts as any).mockResolvedValue([]);
 
       const result = await contactService.getContacts();
 
+      expect(mockContactRepo.countContacts).toHaveBeenCalledWith({ searchTerm: undefined });
       expect(mockContactRepo.findContacts).toHaveBeenCalledWith({
         searchTerm: undefined,
         sortBy: 'createdAt',
         sortOrder: 'desc',
+        page: 1,
         limit: 10,
       });
-      expect(result).toEqual([]);
+      expect(result.data).toEqual([]);
+      expect(result.meta).toEqual({
+        total: 0,
+        page: 1,
+        limit: 10,
+        totalPages: 0,
+      });
     });
   });
 });
