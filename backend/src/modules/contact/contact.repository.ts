@@ -58,6 +58,14 @@ export class ContactRepository {
     return contact || null;
   }
 
+  async findActiveByIds(ids: string[]): Promise<Contact[]> {
+    if (ids.length === 0) return [];
+    return db
+      .select()
+      .from(contacts)
+      .where(and(inArray(contacts.id, ids), isNull(contacts.deletedAt)));
+  }
+
   async findByIdWithDetails(id: string): Promise<ContactWithDetails | null> {
     // 1. Fetch active contact
     const [contact] = await db
@@ -195,6 +203,57 @@ export class ContactRepository {
       .where(and(eq(contactTags.contactId, contactId), eq(contactTags.tagId, tagId)))
       .returning();
     return deleted.length > 0;
+  }
+
+  async bulkAddTags(contactIds: string[], tagIds: string[]): Promise<void> {
+    if (contactIds.length === 0 || tagIds.length === 0) return;
+
+    await db.transaction(async (tx) => {
+      const values: { contactId: string; tagId: string }[] = [];
+      for (const contactId of contactIds) {
+        for (const tagId of tagIds) {
+          values.push({ contactId, tagId });
+        }
+      }
+
+      await tx
+        .insert(contactTags)
+        .values(values)
+        .onConflictDoNothing();
+
+      const tagActivities = contactIds.map((contactId) => ({
+        contactId,
+        type: 'TAG_ADDED',
+        description: `Bulk added ${tagIds.length} tag(s)`,
+        metadata: { tagIds },
+      }));
+
+      await tx.insert(contactActivities).values(tagActivities);
+    });
+  }
+
+  async bulkRemoveTags(contactIds: string[], tagIds: string[]): Promise<void> {
+    if (contactIds.length === 0 || tagIds.length === 0) return;
+
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(contactTags)
+        .where(
+          and(
+            inArray(contactTags.contactId, contactIds),
+            inArray(contactTags.tagId, tagIds)
+          )
+        );
+
+      const tagActivities = contactIds.map((contactId) => ({
+        contactId,
+        type: 'TAG_REMOVED',
+        description: `Bulk removed ${tagIds.length} tag(s)`,
+        metadata: { tagIds },
+      }));
+
+      await tx.insert(contactActivities).values(tagActivities);
+    });
   }
 
   async softDelete(id: string): Promise<Contact | null> {

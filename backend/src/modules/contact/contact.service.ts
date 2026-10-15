@@ -48,6 +48,18 @@ export interface PaginatedContactsResult {
   meta: PaginationMeta;
 }
 
+export interface BulkTagsDTO {
+  contactIds: string[];
+  tagIds: string[];
+  action?: 'add' | 'remove';
+}
+
+export interface BulkTagsResult {
+  affectedContacts: number;
+  tagCount: number;
+  action: 'add' | 'remove';
+}
+
 export class ContactService {
   constructor(
     private readonly contactRepo: ContactRepository = contactRepository,
@@ -208,6 +220,39 @@ export class ContactService {
         { tagId: tag.id, tagName: tag.name }
       );
     }
+  }
+
+  async bulkUpdateTags(dto: BulkTagsDTO): Promise<BulkTagsResult> {
+    const action = dto.action || 'add';
+
+    // 1. Verify all contacts exist and are active
+    const activeContacts = await this.contactRepo.findActiveByIds(dto.contactIds);
+    if (activeContacts.length !== dto.contactIds.length) {
+      const foundIds = new Set(activeContacts.map((c) => c.id));
+      const missing = dto.contactIds.filter((id) => !foundIds.has(id));
+      throw new BadRequestError(`One or more contacts not found or deleted: ${missing.join(', ')}`);
+    }
+
+    // 2. Verify all tags exist
+    const existingTags = await this.tagRepo.findByIds(dto.tagIds);
+    if (existingTags.length !== dto.tagIds.length) {
+      const foundIds = new Set(existingTags.map((t) => t.id));
+      const missing = dto.tagIds.filter((id) => !foundIds.has(id));
+      throw new BadRequestError(`One or more tags not found: ${missing.join(', ')}`);
+    }
+
+    // 3. Perform bulk operation
+    if (action === 'add') {
+      await this.contactRepo.bulkAddTags(dto.contactIds, dto.tagIds);
+    } else {
+      await this.contactRepo.bulkRemoveTags(dto.contactIds, dto.tagIds);
+    }
+
+    return {
+      affectedContacts: dto.contactIds.length,
+      tagCount: dto.tagIds.length,
+      action,
+    };
   }
 
   async getAllContacts(): Promise<ContactWithTags[]> {

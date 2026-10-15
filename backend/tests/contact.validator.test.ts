@@ -5,6 +5,7 @@ import {
   getContactsQuerySchema,
   searchContactsQuerySchema,
   addTagToContactSchema,
+  bulkTagsSchema,
 } from '../src/modules/contact/contact.validator';
 
 describe('Contact Validator Unit Tests - Create Contact', () => {
@@ -291,6 +292,62 @@ describe('Contact Validator Unit Tests - Add Tag To Contact', () => {
 
     expect(error).toBeDefined();
     expect(error?.details[0].message).toContain('tagId must be a valid UUID');
+  });
+});
+
+describe('Contact Validator Unit Tests - Bulk Tags', () => {
+  it('should accept valid bulk tags payload with default action add', () => {
+    const { error, value } = bulkTagsSchema.validate({
+      contactIds: ['123e4567-e89b-12d3-a456-426614174000'],
+      tagIds: ['223e4567-e89b-12d3-a456-426614174000'],
+    });
+
+    expect(error).toBeUndefined();
+    expect(value.action).toBe('add');
+    expect(value.contactIds).toHaveLength(1);
+    expect(value.tagIds).toHaveLength(1);
+  });
+
+  it('should accept valid bulk tags payload with action remove', () => {
+    const { error, value } = bulkTagsSchema.validate({
+      contactIds: ['123e4567-e89b-12d3-a456-426614174000'],
+      tagIds: ['223e4567-e89b-12d3-a456-426614174000'],
+      action: 'remove',
+    });
+
+    expect(error).toBeUndefined();
+    expect(value.action).toBe('remove');
+  });
+
+  it('should reject empty contactIds array', () => {
+    const { error } = bulkTagsSchema.validate({
+      contactIds: [],
+      tagIds: ['223e4567-e89b-12d3-a456-426614174000'],
+    });
+
+    expect(error).toBeDefined();
+    expect(error?.details[0].message).toContain('At least one contactId must be provided');
+  });
+
+  it('should reject empty tagIds array', () => {
+    const { error } = bulkTagsSchema.validate({
+      contactIds: ['123e4567-e89b-12d3-a456-426614174000'],
+      tagIds: [],
+    });
+
+    expect(error).toBeDefined();
+    expect(error?.details[0].message).toContain('At least one tagId must be provided');
+  });
+
+  it('should reject invalid action', () => {
+    const { error } = bulkTagsSchema.validate({
+      contactIds: ['123e4567-e89b-12d3-a456-426614174000'],
+      tagIds: ['223e4567-e89b-12d3-a456-426614174000'],
+      action: 'delete_all',
+    });
+
+    expect(error).toBeDefined();
+    expect(error?.details[0].message).toContain('action must be one of: add, remove');
   });
 });
 

@@ -25,6 +25,9 @@ describe('ContactService Unit Tests - createContact', () => {
       countContacts: vi.fn(),
       addTag: vi.fn(),
       removeTag: vi.fn(),
+      findActiveByIds: vi.fn(),
+      bulkAddTags: vi.fn(),
+      bulkRemoveTags: vi.fn(),
     };
     mockTagRepo = {
       findByIds: vi.fn(),
@@ -569,6 +572,83 @@ describe('ContactService Unit Tests - createContact', () => {
 
       await expect(contactService.removeTagFromContact('c-1', 't-missing')).rejects.toThrow(NotFoundError);
       expect(mockContactRepo.removeTag).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('bulkUpdateTags', () => {
+    const dummyContacts = [
+      { id: 'c-1', firstName: 'Alice', lastName: 'Smith' },
+      { id: 'c-2', firstName: 'Bob', lastName: 'Jones' },
+    ];
+
+    const dummyTags = [
+      { id: 't-1', name: 'VIP', color: '#10B981' },
+      { id: 't-2', name: 'Lead', color: '#3B82F6' },
+    ];
+
+    it('should bulk add tags across contacts', async () => {
+      (mockContactRepo.findActiveByIds as any).mockResolvedValue(dummyContacts);
+      (mockTagRepo.findByIds as any).mockResolvedValue(dummyTags);
+      (mockContactRepo.bulkAddTags as any).mockResolvedValue(undefined);
+
+      const result = await contactService.bulkUpdateTags({
+        contactIds: ['c-1', 'c-2'],
+        tagIds: ['t-1', 't-2'],
+        action: 'add',
+      });
+
+      expect(mockContactRepo.findActiveByIds).toHaveBeenCalledWith(['c-1', 'c-2']);
+      expect(mockTagRepo.findByIds).toHaveBeenCalledWith(['t-1', 't-2']);
+      expect(mockContactRepo.bulkAddTags).toHaveBeenCalledWith(['c-1', 'c-2'], ['t-1', 't-2']);
+      expect(result).toEqual({
+        affectedContacts: 2,
+        tagCount: 2,
+        action: 'add',
+      });
+    });
+
+    it('should bulk remove tags across contacts when action is remove', async () => {
+      (mockContactRepo.findActiveByIds as any).mockResolvedValue(dummyContacts);
+      (mockTagRepo.findByIds as any).mockResolvedValue(dummyTags);
+      (mockContactRepo.bulkRemoveTags as any).mockResolvedValue(undefined);
+
+      const result = await contactService.bulkUpdateTags({
+        contactIds: ['c-1', 'c-2'],
+        tagIds: ['t-1', 't-2'],
+        action: 'remove',
+      });
+
+      expect(mockContactRepo.bulkRemoveTags).toHaveBeenCalledWith(['c-1', 'c-2'], ['t-1', 't-2']);
+      expect(result.action).toBe('remove');
+    });
+
+    it('should throw BadRequestError if any contact is not found or deleted', async () => {
+      // Only 1 of 2 contacts found
+      (mockContactRepo.findActiveByIds as any).mockResolvedValue([dummyContacts[0]]);
+
+      await expect(
+        contactService.bulkUpdateTags({
+          contactIds: ['c-1', 'c-2'],
+          tagIds: ['t-1'],
+        })
+      ).rejects.toThrow(BadRequestError);
+
+      expect(mockContactRepo.bulkAddTags).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestError if any tag is not found', async () => {
+      (mockContactRepo.findActiveByIds as any).mockResolvedValue(dummyContacts);
+      // Only 1 of 2 tags found
+      (mockTagRepo.findByIds as any).mockResolvedValue([dummyTags[0]]);
+
+      await expect(
+        contactService.bulkUpdateTags({
+          contactIds: ['c-1', 'c-2'],
+          tagIds: ['t-1', 't-missing'],
+        })
+      ).rejects.toThrow(BadRequestError);
+
+      expect(mockContactRepo.bulkAddTags).not.toHaveBeenCalled();
     });
   });
 });

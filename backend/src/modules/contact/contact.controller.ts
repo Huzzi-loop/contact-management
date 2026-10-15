@@ -91,6 +91,15 @@ export class ContactController {
       next(error);
     }
   };
+
+  bulkUpdateTags = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await this.service.bulkUpdateTags(req.body);
+      return ApiResponse.success(res, result, 'Bulk tags updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 export const contactController = new ContactController();

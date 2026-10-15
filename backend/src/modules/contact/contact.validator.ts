@@ -96,4 +96,22 @@ export const addTagToContactSchema = Joi.object({
   }),
 });
 
+export const bulkTagsSchema = Joi.object({
+  contactIds: Joi.array().items(Joi.string().uuid().messages({
+    'string.guid': 'Each contactId must be a valid UUID',
+  })).min(1).required().messages({
+    'array.min': 'At least one contactId must be provided',
+    'any.required': 'contactIds is required',
+  }),
+  tagIds: Joi.array().items(Joi.string().uuid().messages({
+    'string.guid': 'Each tagId must be a valid UUID',
+  })).min(1).required().messages({
+    'array.min': 'At least one tagId must be provided',
+    'any.required': 'tagIds is required',
+  }),
+  action: Joi.string().valid('add', 'remove').default('add').messages({
+    'any.only': 'action must be one of: add, remove',
+  }),
+});
+
 
