@@ -1,4 +1,4 @@
-import { eq, and, isNull, ne, desc } from 'drizzle-orm';
+import { eq, and, isNull, ne, desc, sql } from 'drizzle-orm';
 import { db } from '../../db';
 import {
   contacts,
@@ -37,6 +37,15 @@ export class ContactRepository {
       .where(and(...conditions));
 
     return result[0] || null;
+  }
+
+  async findById(id: string): Promise<Contact | null> {
+    const [contact] = await db
+      .select()
+      .from(contacts)
+      .where(and(eq(contacts.id, id), isNull(contacts.deletedAt)));
+
+    return contact || null;
   }
 
   async findByIdWithDetails(id: string): Promise<ContactWithDetails | null> {
@@ -120,6 +129,44 @@ export class ContactRepository {
         ...newContact,
         tags: associatedTags,
       };
+    });
+  }
+
+  async updateWithOCC(
+    id: string,
+    expectedVersion: number,
+    data: Partial<NewContact>
+  ): Promise<Contact | null> {
+    const result = await db
+      .update(contacts)
+      .set({
+        ...data,
+        version: sql`${contacts.version} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(contacts.id, id),
+          eq(contacts.version, expectedVersion),
+          isNull(contacts.deletedAt)
+        )
+      )
+      .returning();
+
+    return result[0] || null;
+  }
+
+  async logActivity(
+    contactId: string,
+    type: string,
+    description: string,
+    metadata?: any
+  ): Promise<void> {
+    await db.insert(contactActivities).values({
+      contactId,
+      type,
+      description,
+      metadata,
     });
   }
 }

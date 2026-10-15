@@ -14,7 +14,10 @@ describe('ContactService Unit Tests - createContact', () => {
     mockContactRepo = {
       findActiveByEmail: vi.fn(),
       create: vi.fn(),
+      findById: vi.fn(),
       findByIdWithDetails: vi.fn(),
+      updateWithOCC: vi.fn(),
+      logActivity: vi.fn(),
     };
     mockTagRepo = {
       findByIds: vi.fn(),
@@ -143,6 +146,97 @@ describe('ContactService Unit Tests - createContact', () => {
 
       await expect(contactService.getContactById('non-existent-id')).rejects.toThrow(NotFoundError);
       expect(mockContactRepo.findByIdWithDetails).toHaveBeenCalledWith('non-existent-id');
+    });
+  });
+
+  describe('updateContact (Optimistic Concurrency Control)', () => {
+    const existingContact = {
+      id: 'c-100',
+      firstName: 'Charlie',
+      lastName: 'Brown',
+      email: 'charlie@peanuts.com',
+      phone: '555-1111',
+      company: 'Peanuts Inc',
+      version: 1,
+      deletedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    it('should successfully update contact when version matches and log activity', async () => {
+      (mockContactRepo.findById as any).mockResolvedValue(existingContact);
+
+      const updatedContact = {
+        ...existingContact,
+        firstName: 'Charles',
+        version: 2,
+      };
+      (mockContactRepo.updateWithOCC as any).mockResolvedValue(updatedContact);
+      (mockContactRepo.logActivity as any).mockResolvedValue(undefined);
+
+      const result = await contactService.updateContact('c-100', {
+        version: 1,
+        firstName: 'Charles',
+      });
+
+      expect(mockContactRepo.findById).toHaveBeenCalledWith('c-100');
+      expect(mockContactRepo.updateWithOCC).toHaveBeenCalledWith(
+        'c-100',
+        1,
+        { firstName: 'Charles' }
+      );
+      expect(mockContactRepo.logActivity).toHaveBeenCalledWith(
+        'c-100',
+        'CONTACT_UPDATED',
+        'Contact updated fields: firstName',
+        { updatedFields: ['firstName'] }
+      );
+      expect(result.version).toBe(2);
+      expect(result.firstName).toBe('Charles');
+    });
+
+    it('should throw ConflictError (409) if submitted version does not match database version', async () => {
+      // Database has version 2, but client submitted stale version 1
+      const newerInDb = { ...existingContact, version: 2 };
+      (mockContactRepo.findById as any).mockResolvedValue(newerInDb);
+      (mockContactRepo.findByIdWithDetails as any).mockResolvedValue(newerInDb);
+
+      await expect(
+        contactService.updateContact('c-100', {
+          version: 1, // Stale version!
+          firstName: 'StaleUpdate',
+        })
+      ).rejects.toThrow(ConflictError);
+
+      expect(mockContactRepo.updateWithOCC).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundError if contact does not exist', async () => {
+      (mockContactRepo.findById as any).mockResolvedValue(null);
+
+      await expect(
+        contactService.updateContact('c-missing', {
+          version: 1,
+          firstName: 'Ghost',
+        })
+      ).rejects.toThrow(NotFoundError);
+    });
+
+    it('should throw ConflictError if updated email is already taken by another contact', async () => {
+      (mockContactRepo.findById as any).mockResolvedValue(existingContact);
+      (mockContactRepo.findActiveByEmail as any).mockResolvedValue({
+        id: 'c-200',
+        email: 'taken@other.com',
+      });
+
+      await expect(
+        contactService.updateContact('c-100', {
+          version: 1,
+          email: 'taken@other.com',
+        })
+      ).rejects.toThrow(ConflictError);
+
+      expect(mockContactRepo.updateWithOCC).not.toHaveBeenCalled();
     });
   });
 });

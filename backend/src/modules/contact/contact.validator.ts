@@ -28,3 +28,32 @@ export const createContactSchema = Joi.object({
     .default([])
     .optional(),
 });
+
+export const updateContactSchema = Joi.object({
+  version: Joi.number().integer().min(1).required().messages({
+    'any.required': 'Version number is required for optimistic concurrency control',
+    'number.base': 'Version must be an integer',
+    'number.min': 'Version must be at least 1',
+  }),
+  firstName: Joi.string().trim().min(1).max(100).optional().messages({
+    'string.empty': 'First name cannot be empty',
+  }),
+  lastName: Joi.string().trim().min(1).max(100).optional().messages({
+    'string.empty': 'Last name cannot be empty',
+  }),
+  email: Joi.string()
+    .trim()
+    .email({ tlds: { allow: false } })
+    .max(255)
+    .allow(null, '')
+    .optional()
+    .messages({
+      'string.email': 'Email must be a valid email address',
+    }),
+  phone: Joi.string().trim().max(50).allow(null, '').optional(),
+  company: Joi.string().trim().max(150).allow(null, '').optional(),
+})
+  .min(2) // Requires version + at least 1 field to update
+  .messages({
+    'object.min': 'At least one field must be provided to update',
+  });

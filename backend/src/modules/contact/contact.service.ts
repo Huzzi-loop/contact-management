@@ -5,7 +5,7 @@ import {
   ContactWithDetails,
 } from './contact.repository';
 import { TagRepository, tagRepository } from '../tag/tag.repository';
-import { NewContact } from '../../db/schema';
+import { Contact, NewContact } from '../../db/schema';
 import { ConflictError, BadRequestError, NotFoundError } from '../../utils/apiError';
 
 export interface CreateContactDTO {
@@ -15,6 +15,15 @@ export interface CreateContactDTO {
   phone?: string | null;
   company?: string | null;
   tagIds?: string[];
+}
+
+export interface UpdateContactDTO {
+  version: number;
+  firstName?: string;
+  lastName?: string;
+  email?: string | null;
+  phone?: string | null;
+  company?: string | null;
 }
 
 export class ContactService {
@@ -61,6 +70,69 @@ export class ContactService {
       throw new NotFoundError(`Contact with ID "${id}" not found`);
     }
     return contact;
+  }
+
+  async updateContact(id: string, dto: UpdateContactDTO): Promise<Contact> {
+    // 1. Fetch current contact to verify existence and OCC version
+    const current = await this.contactRepo.findById(id);
+    if (!current) {
+      throw new NotFoundError(`Contact with ID "${id}" not found`);
+    }
+
+    // 2. Check for Optimistic Concurrency Conflict
+    if (current.version !== dto.version) {
+      const latest = await this.contactRepo.findByIdWithDetails(id);
+      throw new ConflictError(
+        'The contact was modified by another user. Please reload the latest details.',
+        {
+          currentVersion: current.version,
+          submittedVersion: dto.version,
+          latestContact: latest,
+        }
+      );
+    }
+
+    // 3. Check for email collision if email is being updated to a new address
+    const newEmail = dto.email !== undefined
+      ? (dto.email ? dto.email.trim().toLowerCase() : null)
+      : undefined;
+
+    if (newEmail && newEmail !== current.email) {
+      const collision = await this.contactRepo.findActiveByEmail(newEmail, id);
+      if (collision) {
+        throw new ConflictError(`Email "${newEmail}" is already in use by another contact`);
+      }
+    }
+
+    // 4. Prepare update payload
+    const updateData: Partial<NewContact> = {};
+    if (dto.firstName !== undefined) updateData.firstName = dto.firstName.trim();
+    if (dto.lastName !== undefined) updateData.lastName = dto.lastName.trim();
+    if (newEmail !== undefined) updateData.email = newEmail;
+    if (dto.phone !== undefined) updateData.phone = dto.phone ? dto.phone.trim() : null;
+    if (dto.company !== undefined) updateData.company = dto.company ? dto.company.trim() : null;
+
+    // 5. Execute atomic update with version check
+    const updated = await this.contactRepo.updateWithOCC(id, dto.version, updateData);
+    if (!updated) {
+      // Race condition caught: another write committed between our read and write
+      const latest = await this.contactRepo.findByIdWithDetails(id);
+      throw new ConflictError(
+        'Concurrent update conflict detected. Please reload and try again.',
+        { latestContact: latest }
+      );
+    }
+
+    // 6. Record activity history
+    const changedFields = Object.keys(updateData);
+    await this.contactRepo.logActivity(
+      id,
+      'CONTACT_UPDATED',
+      `Contact updated fields: ${changedFields.join(', ')}`,
+      { updatedFields: changedFields }
+    );
+
+    return updated;
   }
 }
 

@@ -23,6 +23,16 @@ export class ContactController {
       next(error);
     }
   };
+
+  updateContact = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const id = req.params.id as string;
+      const updated = await this.service.updateContact(id, req.body);
+      return ApiResponse.success(res, updated, 'Contact updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 export const contactController = new ContactController();
