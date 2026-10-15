@@ -1,5 +1,8 @@
-import express, { Express, Request, Response } from 'express';
+import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import { ApiResponse } from './utils/apiResponse';
+import { NotFoundError } from './utils/apiError';
+import { errorHandler } from './middlewares/error.middleware';
 
 export const createApp = (): Express => {
   const app = express();
@@ -11,20 +14,24 @@ export const createApp = (): Express => {
 
   // Basic Health Check route
   app.get('/health', (_req: Request, res: Response) => {
-    res.status(200).json({
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-    });
+    return ApiResponse.success(
+      res,
+      {
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+      },
+      'CRM backend service is operational'
+    );
   });
 
   // 404 Fallback
-  app.use((req: Request, res: Response) => {
-    res.status(404).json({
-      error: 'Not Found',
-      message: `Cannot ${req.method} ${req.originalUrl}`,
-    });
+  app.use((req: Request, _res: Response, next: NextFunction) => {
+    next(new NotFoundError(`Cannot ${req.method} ${req.originalUrl}`));
   });
+
+  // Global Error Handler
+  app.use(errorHandler);
 
   return app;
 };
