@@ -19,6 +19,7 @@ describe('ContactService Unit Tests - createContact', () => {
       updateWithOCC: vi.fn(),
       logActivity: vi.fn(),
       softDelete: vi.fn(),
+      findAllActive: vi.fn(),
     };
     mockTagRepo = {
       findByIds: vi.fn(),
@@ -257,6 +258,48 @@ describe('ContactService Unit Tests - createContact', () => {
 
       await expect(contactService.deleteContact('c-missing')).rejects.toThrow(NotFoundError);
       expect(mockContactRepo.softDelete).toHaveBeenCalledWith('c-missing');
+    });
+  });
+
+  describe('getAllContacts (Basic)', () => {
+    it('should return all active contacts with tags from repository', async () => {
+      const dummyContacts = [
+        {
+          id: 'c-1',
+          firstName: 'John',
+          lastName: 'Doe',
+          email: 'john@example.com',
+          phone: '555-0001',
+          company: 'Acme',
+          version: 1,
+          deletedAt: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          tags: [{ id: 't-1', name: 'VIP', color: '#10B981', createdAt: new Date(), updatedAt: new Date() }],
+        },
+        {
+          id: 'c-2',
+          firstName: 'Jane',
+          lastName: 'Smith',
+          email: 'jane@example.com',
+          phone: '555-0002',
+          company: 'Globex',
+          version: 1,
+          deletedAt: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          tags: [],
+        },
+      ];
+
+      (mockContactRepo.findAllActive as any).mockResolvedValue(dummyContacts);
+
+      const result = await contactService.getAllContacts();
+
+      expect(mockContactRepo.findAllActive).toHaveBeenCalledOnce();
+      expect(result).toHaveLength(2);
+      expect(result[0].firstName).toBe('John');
+      expect(result[0].tags).toHaveLength(1);
     });
   });
 });

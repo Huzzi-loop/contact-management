@@ -141,6 +141,10 @@ export class ContactService {
       throw new NotFoundError(`Contact with ID "${id}" not found`);
     }
   }
+
+  async getAllContacts(): Promise<ContactWithTags[]> {
+    return this.contactRepo.findAllActive();
+  }
 }
 
 export const contactService = new ContactService();

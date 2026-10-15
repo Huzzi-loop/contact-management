@@ -43,6 +43,15 @@ export class ContactController {
       next(error);
     }
   };
+
+  getContacts = async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      const contacts = await this.service.getAllContacts();
+      return ApiResponse.success(res, contacts, 'Contacts retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 export const contactController = new ContactController();
