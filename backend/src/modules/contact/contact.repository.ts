@@ -180,6 +180,23 @@ export class ContactRepository {
     });
   }
 
+  async addTag(contactId: string, tagId: string): Promise<boolean> {
+    const inserted = await db
+      .insert(contactTags)
+      .values({ contactId, tagId })
+      .onConflictDoNothing()
+      .returning();
+    return inserted.length > 0;
+  }
+
+  async removeTag(contactId: string, tagId: string): Promise<boolean> {
+    const deleted = await db
+      .delete(contactTags)
+      .where(and(eq(contactTags.contactId, contactId), eq(contactTags.tagId, tagId)))
+      .returning();
+    return deleted.length > 0;
+  }
+
   async softDelete(id: string): Promise<Contact | null> {
     return await db.transaction(async (tx) => {
       const [deletedContact] = await tx

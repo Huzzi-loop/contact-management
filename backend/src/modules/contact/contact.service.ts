@@ -5,7 +5,7 @@ import {
   ContactWithDetails,
 } from './contact.repository';
 import { TagRepository, tagRepository } from '../tag/tag.repository';
-import { Contact, NewContact } from '../../db/schema';
+import { Contact, NewContact, Tag } from '../../db/schema';
 import { ConflictError, BadRequestError, NotFoundError } from '../../utils/apiError';
 
 export interface CreateContactDTO {
@@ -161,6 +161,52 @@ export class ContactService {
     const deleted = await this.contactRepo.softDelete(id);
     if (!deleted) {
       throw new NotFoundError(`Contact with ID "${id}" not found`);
+    }
+  }
+
+  async addTagToContact(contactId: string, tagId: string): Promise<Tag> {
+    const contact = await this.contactRepo.findById(contactId);
+    if (!contact) {
+      throw new NotFoundError(`Contact with ID "${contactId}" not found`);
+    }
+
+    const tag = await this.tagRepo.findById(tagId);
+    if (!tag) {
+      throw new NotFoundError(`Tag with ID "${tagId}" not found`);
+    }
+
+    const newlyAdded = await this.contactRepo.addTag(contactId, tagId);
+    if (newlyAdded) {
+      await this.contactRepo.logActivity(
+        contactId,
+        'TAG_ADDED',
+        `Tag "${tag.name}" added to contact`,
+        { tagId: tag.id, tagName: tag.name }
+      );
+    }
+
+    return tag;
+  }
+
+  async removeTagFromContact(contactId: string, tagId: string): Promise<void> {
+    const contact = await this.contactRepo.findById(contactId);
+    if (!contact) {
+      throw new NotFoundError(`Contact with ID "${contactId}" not found`);
+    }
+
+    const tag = await this.tagRepo.findById(tagId);
+    if (!tag) {
+      throw new NotFoundError(`Tag with ID "${tagId}" not found`);
+    }
+
+    const removed = await this.contactRepo.removeTag(contactId, tagId);
+    if (removed) {
+      await this.contactRepo.logActivity(
+        contactId,
+        'TAG_REMOVED',
+        `Tag "${tag.name}" removed from contact`,
+        { tagId: tag.id, tagName: tag.name }
+      );
     }
   }
 

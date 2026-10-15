@@ -4,6 +4,7 @@ import {
   updateContactSchema,
   getContactsQuerySchema,
   searchContactsQuerySchema,
+  addTagToContactSchema,
 } from '../src/modules/contact/contact.validator';
 
 describe('Contact Validator Unit Tests - Create Contact', () => {
@@ -263,6 +264,33 @@ describe('Contact Validator Unit Tests - Get/Search Contacts Query', () => {
 
     expect(error).toBeDefined();
     expect(error?.details[0].message).toContain('company filter cannot exceed 150 characters');
+  });
+});
+
+describe('Contact Validator Unit Tests - Add Tag To Contact', () => {
+  it('should accept valid tagId UUID', () => {
+    const { error, value } = addTagToContactSchema.validate({
+      tagId: '123e4567-e89b-12d3-a456-426614174000',
+    });
+
+    expect(error).toBeUndefined();
+    expect(value.tagId).toBe('123e4567-e89b-12d3-a456-426614174000');
+  });
+
+  it('should reject missing tagId', () => {
+    const { error } = addTagToContactSchema.validate({});
+
+    expect(error).toBeDefined();
+    expect(error?.details[0].message).toContain('tagId is required');
+  });
+
+  it('should reject non-UUID tagId', () => {
+    const { error } = addTagToContactSchema.validate({
+      tagId: 'not-a-uuid',
+    });
+
+    expect(error).toBeDefined();
+    expect(error?.details[0].message).toContain('tagId must be a valid UUID');
   });
 });
 

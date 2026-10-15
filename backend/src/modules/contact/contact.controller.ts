@@ -69,6 +69,28 @@ export class ContactController {
       next(error);
     }
   };
+
+  addTagToContact = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const contactId = req.params.id as string;
+      const { tagId } = req.body;
+      const tag = await this.service.addTagToContact(contactId, tagId);
+      return ApiResponse.success(res, tag, 'Tag added to contact successfully', 200);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  removeTagFromContact = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const contactId = req.params.id as string;
+      const tagId = req.params.tagId as string;
+      await this.service.removeTagFromContact(contactId, tagId);
+      return ApiResponse.success(res, null, 'Tag removed from contact successfully');
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 export const contactController = new ContactController();

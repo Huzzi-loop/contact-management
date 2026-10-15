@@ -23,9 +23,12 @@ describe('ContactService Unit Tests - createContact', () => {
       searchContacts: vi.fn(),
       findContacts: vi.fn(),
       countContacts: vi.fn(),
+      addTag: vi.fn(),
+      removeTag: vi.fn(),
     };
     mockTagRepo = {
       findByIds: vi.fn(),
+      findById: vi.fn(),
     };
     contactService = new ContactService(
       mockContactRepo as ContactRepository,
@@ -439,6 +442,133 @@ describe('ContactService Unit Tests - createContact', () => {
         limit: 10,
         totalPages: 0,
       });
+    });
+  });
+
+  describe('addTagToContact', () => {
+    const existingContact = {
+      id: 'c-1',
+      firstName: 'Alice',
+      lastName: 'Smith',
+      email: 'alice@example.com',
+      phone: null,
+      company: null,
+      version: 1,
+      deletedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const existingTag = {
+      id: 't-1',
+      name: 'VIP',
+      color: '#10B981',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    it('should add tag to contact and log TAG_ADDED activity', async () => {
+      (mockContactRepo.findById as any).mockResolvedValue(existingContact);
+      (mockTagRepo.findById as any).mockResolvedValue(existingTag);
+      (mockContactRepo.addTag as any).mockResolvedValue(true);
+      (mockContactRepo.logActivity as any).mockResolvedValue(undefined);
+
+      const result = await contactService.addTagToContact('c-1', 't-1');
+
+      expect(mockContactRepo.findById).toHaveBeenCalledWith('c-1');
+      expect(mockTagRepo.findById).toHaveBeenCalledWith('t-1');
+      expect(mockContactRepo.addTag).toHaveBeenCalledWith('c-1', 't-1');
+      expect(mockContactRepo.logActivity).toHaveBeenCalledWith(
+        'c-1',
+        'TAG_ADDED',
+        'Tag "VIP" added to contact',
+        { tagId: 't-1', tagName: 'VIP' }
+      );
+      expect(result).toEqual(existingTag);
+    });
+
+    it('should not log activity if tag was already associated', async () => {
+      (mockContactRepo.findById as any).mockResolvedValue(existingContact);
+      (mockTagRepo.findById as any).mockResolvedValue(existingTag);
+      (mockContactRepo.addTag as any).mockResolvedValue(false); // already existed
+
+      const result = await contactService.addTagToContact('c-1', 't-1');
+
+      expect(mockContactRepo.addTag).toHaveBeenCalledWith('c-1', 't-1');
+      expect(mockContactRepo.logActivity).not.toHaveBeenCalled();
+      expect(result).toEqual(existingTag);
+    });
+
+    it('should throw NotFoundError if contact is not found', async () => {
+      (mockContactRepo.findById as any).mockResolvedValue(null);
+
+      await expect(contactService.addTagToContact('c-missing', 't-1')).rejects.toThrow(NotFoundError);
+      expect(mockContactRepo.addTag).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundError if tag is not found', async () => {
+      (mockContactRepo.findById as any).mockResolvedValue(existingContact);
+      (mockTagRepo.findById as any).mockResolvedValue(null);
+
+      await expect(contactService.addTagToContact('c-1', 't-missing')).rejects.toThrow(NotFoundError);
+      expect(mockContactRepo.addTag).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('removeTagFromContact', () => {
+    const existingContact = {
+      id: 'c-1',
+      firstName: 'Alice',
+      lastName: 'Smith',
+      email: 'alice@example.com',
+      phone: null,
+      company: null,
+      version: 1,
+      deletedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const existingTag = {
+      id: 't-1',
+      name: 'VIP',
+      color: '#10B981',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    it('should remove tag from contact and log TAG_REMOVED activity', async () => {
+      (mockContactRepo.findById as any).mockResolvedValue(existingContact);
+      (mockTagRepo.findById as any).mockResolvedValue(existingTag);
+      (mockContactRepo.removeTag as any).mockResolvedValue(true);
+      (mockContactRepo.logActivity as any).mockResolvedValue(undefined);
+
+      await contactService.removeTagFromContact('c-1', 't-1');
+
+      expect(mockContactRepo.findById).toHaveBeenCalledWith('c-1');
+      expect(mockTagRepo.findById).toHaveBeenCalledWith('t-1');
+      expect(mockContactRepo.removeTag).toHaveBeenCalledWith('c-1', 't-1');
+      expect(mockContactRepo.logActivity).toHaveBeenCalledWith(
+        'c-1',
+        'TAG_REMOVED',
+        'Tag "VIP" removed from contact',
+        { tagId: 't-1', tagName: 'VIP' }
+      );
+    });
+
+    it('should throw NotFoundError if contact is not found', async () => {
+      (mockContactRepo.findById as any).mockResolvedValue(null);
+
+      await expect(contactService.removeTagFromContact('c-missing', 't-1')).rejects.toThrow(NotFoundError);
+      expect(mockContactRepo.removeTag).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundError if tag is not found', async () => {
+      (mockContactRepo.findById as any).mockResolvedValue(existingContact);
+      (mockTagRepo.findById as any).mockResolvedValue(null);
+
+      await expect(contactService.removeTagFromContact('c-1', 't-missing')).rejects.toThrow(NotFoundError);
+      expect(mockContactRepo.removeTag).not.toHaveBeenCalled();
     });
   });
 });

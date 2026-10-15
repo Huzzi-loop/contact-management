@@ -89,3 +89,11 @@ export const getContactsQuerySchema = Joi.object({
 
 export const searchContactsQuerySchema = getContactsQuerySchema;
 
+export const addTagToContactSchema = Joi.object({
+  tagId: Joi.string().uuid().required().messages({
+    'string.guid': 'tagId must be a valid UUID',
+    'any.required': 'tagId is required',
+  }),
+});
+
+
