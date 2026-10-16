@@ -6,6 +6,8 @@ import { ContactFilters } from './components/contacts/ContactFilters';
 import { ContactTable } from './components/contacts/ContactTable';
 import { ContactDetailModal } from './components/contacts/ContactDetailModal';
 import { CreateContactModal } from './components/contacts/CreateContactModal';
+import { EditContactModal } from './components/contacts/EditContactModal';
+import type { ContactWithTags, ContactWithDetails } from './types';
 
 export const App: React.FC = () => {
   const {
@@ -33,6 +35,7 @@ export const App: React.FC = () => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedContactIdForDetails, setSelectedContactIdForDetails] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [editContactTarget, setEditContactTarget] = useState<ContactWithTags | ContactWithDetails | null>(null);
 
   const handleSelectToggle = (id: string) => {
     setSelectedIds((prev) =>
@@ -124,7 +127,7 @@ export const App: React.FC = () => {
           onSelectToggle={handleSelectToggle}
           onSelectAllPage={handleSelectAllPage}
           onViewDetails={(id) => setSelectedContactIdForDetails(id)}
-          onEdit={() => {}}
+          onEdit={(contact) => setEditContactTarget(contact)}
           onDelete={() => {}}
           hasActiveFilters={hasActiveFilters}
           onResetFilters={resetFilters}
@@ -139,6 +142,20 @@ export const App: React.FC = () => {
         availableTags={tags}
       />
 
+      {/* Edit Contact Modal with OCC Version Checking */}
+      <EditContactModal
+        contact={editContactTarget}
+        isOpen={Boolean(editContactTarget)}
+        onClose={() => setEditContactTarget(null)}
+        onSuccess={() => {
+          refresh();
+          if (selectedContactIdForDetails) {
+            setSelectedContactIdForDetails(editContactTarget?.id || null);
+          }
+        }}
+        onConflict={() => {}}
+      />
+
       {/* Contact Detail Modal */}
       <ContactDetailModal
         contactId={selectedContactIdForDetails}
@@ -146,7 +163,7 @@ export const App: React.FC = () => {
         onClose={() => setSelectedContactIdForDetails(null)}
         allTags={tags}
         onContactModified={refresh}
-        onEdit={() => {}}
+        onEdit={(detailContact: ContactWithDetails) => setEditContactTarget(detailContact)}
       />
     </div>
   );
