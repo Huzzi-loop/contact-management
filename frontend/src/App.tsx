@@ -9,6 +9,7 @@ import { ContactDetailModal } from './components/contacts/ContactDetailModal';
 import { CreateContactModal } from './components/contacts/CreateContactModal';
 import { EditContactModal } from './components/contacts/EditContactModal';
 import { ConflictModal } from './components/contacts/ConflictModal';
+import { BulkActionBar } from './components/contacts/BulkActionBar';
 import type { ContactWithTags, ContactWithDetails, OccConflictDetails } from './types';
 
 export const App: React.FC = () => {
@@ -68,7 +69,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-slate-50 flex flex-col pb-16">
       <header className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -146,6 +147,13 @@ export const App: React.FC = () => {
           onResetFilters={resetFilters}
         />
       </main>
+
+      {/* Floating Bulk Actions Bar */}
+      <BulkActionBar
+        selectedCount={selectedIds.length}
+        onManageTags={() => {}}
+        onClearSelection={() => setSelectedIds([])}
+      />
 
       {/* Create Contact Modal */}
       <CreateContactModal
