@@ -14,7 +14,7 @@ export const pool = new Pool({
       : false,
   max: config.isProduction ? 5 : 20,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
+  connectionTimeoutMillis: 5000,
 });
 
 // Typed Drizzle database instance

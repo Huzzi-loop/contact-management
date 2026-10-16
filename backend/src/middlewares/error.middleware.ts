@@ -20,6 +20,7 @@ export const errorHandler = (
   }
 
   // Handle generic uncaught server errors
+  console.error('Unhandled server error:', err);
   const message = config.isProduction ? 'Internal Server Error' : err.message;
   const details = config.isProduction ? undefined : { stack: err.stack };
 
