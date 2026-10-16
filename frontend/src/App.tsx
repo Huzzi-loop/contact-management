@@ -5,6 +5,7 @@ import { useTags } from './hooks/useTags';
 import { ContactFilters } from './components/contacts/ContactFilters';
 import { ContactTable } from './components/contacts/ContactTable';
 import { ContactDetailModal } from './components/contacts/ContactDetailModal';
+import { CreateContactModal } from './components/contacts/CreateContactModal';
 
 export const App: React.FC = () => {
   const {
@@ -31,6 +32,7 @@ export const App: React.FC = () => {
   const { tags } = useTags();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedContactIdForDetails, setSelectedContactIdForDetails] = useState<string | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const handleSelectToggle = (id: string) => {
     setSelectedIds((prev) =>
@@ -105,7 +107,7 @@ export const App: React.FC = () => {
           tags={tags}
           hasActiveFilters={hasActiveFilters}
           onReset={resetFilters}
-          onCreateContact={() => {}}
+          onCreateContact={() => setIsCreateModalOpen(true)}
         />
 
         {/* Contacts Table */}
@@ -128,6 +130,14 @@ export const App: React.FC = () => {
           onResetFilters={resetFilters}
         />
       </main>
+
+      {/* Create Contact Modal */}
+      <CreateContactModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={refresh}
+        availableTags={tags}
+      />
 
       {/* Contact Detail Modal */}
       <ContactDetailModal
