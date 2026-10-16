@@ -3,9 +3,7 @@ import { Users, AlertTriangle } from 'lucide-react';
 import { useContacts } from './hooks/useContacts';
 import { useTags } from './hooks/useTags';
 import { ContactFilters } from './components/contacts/ContactFilters';
-import { ContactRow } from './components/contacts/ContactRow';
-import { TableRowSkeleton } from './components/common/Skeleton';
-import { EmptyState } from './components/common/EmptyState';
+import { ContactTable } from './components/contacts/ContactTable';
 
 export const App: React.FC = () => {
   const {
@@ -22,6 +20,8 @@ export const App: React.FC = () => {
     sortBy,
     sortOrder,
     handleSort,
+    setPage,
+    setLimit,
     resetFilters,
     hasActiveFilters,
     refresh,
@@ -34,6 +34,17 @@ export const App: React.FC = () => {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
+  };
+
+  const handleSelectAllPage = () => {
+    const pageIds = contacts.map((c) => c.id);
+    const isAllSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id));
+
+    if (isAllSelected) {
+      setSelectedIds((prev) => prev.filter((id) => !pageIds.includes(id)));
+    } else {
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...pageIds])));
+    }
   };
 
   return (
@@ -95,57 +106,25 @@ export const App: React.FC = () => {
           onCreateContact={() => {}}
         />
 
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-              <thead className="bg-slate-50 text-slate-600 text-xs font-semibold uppercase tracking-wider">
-                <tr>
-                  <th className="px-4 py-3.5 w-10 text-center"></th>
-                  <th className="px-4 py-3.5">Name</th>
-                  <th className="px-4 py-3.5">Email</th>
-                  <th className="px-4 py-3.5">Phone</th>
-                  <th className="px-4 py-3.5">Company</th>
-                  <th className="px-4 py-3.5">Tags</th>
-                  <th className="px-4 py-3.5">Created</th>
-                  <th className="px-4 py-3.5 text-right w-24">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
-                {loading ? (
-                  <TableRowSkeleton rows={5} cols={8} />
-                ) : contacts.length > 0 ? (
-                  contacts.map((contact) => (
-                    <ContactRow
-                      key={contact.id}
-                      contact={contact}
-                      isSelected={selectedIds.includes(contact.id)}
-                      onSelectToggle={handleSelectToggle}
-                      onViewDetails={() => {}}
-                      onEdit={() => {}}
-                      onDelete={() => {}}
-                    />
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={8}>
-                      <EmptyState
-                        icon={hasActiveFilters ? 'search' : 'users'}
-                        title={hasActiveFilters ? 'No matching contacts' : 'No contacts yet'}
-                        description={
-                          hasActiveFilters
-                            ? 'Try adjusting your search criteria, company filter, or tag filter.'
-                            : 'Your contact workspace is empty. Get started by adding your first contact.'
-                        }
-                        actionLabel={hasActiveFilters ? 'Clear all filters' : undefined}
-                        onAction={hasActiveFilters ? resetFilters : undefined}
-                      />
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        {/* Full Contacts Table */}
+        <ContactTable
+          contacts={contacts}
+          meta={meta}
+          loading={loading}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSort={handleSort}
+          onPageChange={setPage}
+          onLimitChange={setLimit}
+          selectedIds={selectedIds}
+          onSelectToggle={handleSelectToggle}
+          onSelectAllPage={handleSelectAllPage}
+          onViewDetails={() => {}}
+          onEdit={() => {}}
+          onDelete={() => {}}
+          hasActiveFilters={hasActiveFilters}
+          onResetFilters={resetFilters}
+        />
       </main>
     </div>
   );
