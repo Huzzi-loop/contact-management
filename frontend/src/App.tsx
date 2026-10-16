@@ -10,6 +10,7 @@ import { CreateContactModal } from './components/contacts/CreateContactModal';
 import { EditContactModal } from './components/contacts/EditContactModal';
 import { ConflictModal } from './components/contacts/ConflictModal';
 import { BulkActionBar } from './components/contacts/BulkActionBar';
+import { BulkTagModal } from './components/contacts/BulkTagModal';
 import type { ContactWithTags, ContactWithDetails, OccConflictDetails } from './types';
 
 export const App: React.FC = () => {
@@ -39,6 +40,7 @@ export const App: React.FC = () => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedContactIdForDetails, setSelectedContactIdForDetails] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isBulkTagModalOpen, setIsBulkTagModalOpen] = useState(false);
   const [editContactTarget, setEditContactTarget] = useState<ContactWithTags | ContactWithDetails | null>(null);
   const [conflictDetails, setConflictDetails] = useState<OccConflictDetails<ContactWithDetails> | null>(null);
 
@@ -151,8 +153,20 @@ export const App: React.FC = () => {
       {/* Floating Bulk Actions Bar */}
       <BulkActionBar
         selectedCount={selectedIds.length}
-        onManageTags={() => {}}
+        onManageTags={() => setIsBulkTagModalOpen(true)}
         onClearSelection={() => setSelectedIds([])}
+      />
+
+      {/* Bulk Tag Modal */}
+      <BulkTagModal
+        isOpen={isBulkTagModalOpen}
+        onClose={() => setIsBulkTagModalOpen(false)}
+        selectedContactIds={selectedIds}
+        availableTags={tags}
+        onSuccess={() => {
+          setSelectedIds([]);
+          refresh();
+        }}
       />
 
       {/* Create Contact Modal */}
