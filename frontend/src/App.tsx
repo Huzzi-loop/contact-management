@@ -3,17 +3,18 @@ import { Users, AlertTriangle } from 'lucide-react';
 import { useContacts } from './hooks/useContacts';
 import { useTags } from './hooks/useTags';
 import { useToast } from './hooks/useToast';
-import { ContactFilters } from './components/contacts/ContactFilters';
-import { ContactTable } from './components/contacts/ContactTable';
-import { ContactDetailModal } from './components/contacts/ContactDetailModal';
-import { CreateContactModal } from './components/contacts/CreateContactModal';
-import { EditContactModal } from './components/contacts/EditContactModal';
-import { ConflictModal } from './components/contacts/ConflictModal';
-import { BulkActionBar } from './components/contacts/BulkActionBar';
-import { BulkTagModal } from './components/contacts/BulkTagModal';
-import { CreateTagModal } from './components/contacts/CreateTagModal';
-import { Modal } from './components/common/Modal';
-import { Button } from './components/common/Button';
+import {
+  ContactFilters,
+  ContactTable,
+  ContactDetailModal,
+  CreateContactModal,
+  EditContactModal,
+  ConflictModal,
+  BulkActionBar,
+  BulkTagModal,
+  CreateTagModal,
+} from './components/contacts';
+import { Modal, Button } from './components/common';
 import { contactsApi } from './api';
 import { parseApiError } from './utils/errorHandler';
 import type { ContactWithTags, ContactWithDetails, OccConflictDetails } from './types';
