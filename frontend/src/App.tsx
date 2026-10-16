@@ -4,6 +4,7 @@ import { useContacts } from './hooks/useContacts';
 import { useTags } from './hooks/useTags';
 import { ContactFilters } from './components/contacts/ContactFilters';
 import { ContactTable } from './components/contacts/ContactTable';
+import { ContactDetailModal } from './components/contacts/ContactDetailModal';
 
 export const App: React.FC = () => {
   const {
@@ -29,6 +30,7 @@ export const App: React.FC = () => {
 
   const { tags } = useTags();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedContactIdForDetails, setSelectedContactIdForDetails] = useState<string | null>(null);
 
   const handleSelectToggle = (id: string) => {
     setSelectedIds((prev) =>
@@ -106,7 +108,7 @@ export const App: React.FC = () => {
           onCreateContact={() => {}}
         />
 
-        {/* Full Contacts Table */}
+        {/* Contacts Table */}
         <ContactTable
           contacts={contacts}
           meta={meta}
@@ -119,13 +121,23 @@ export const App: React.FC = () => {
           selectedIds={selectedIds}
           onSelectToggle={handleSelectToggle}
           onSelectAllPage={handleSelectAllPage}
-          onViewDetails={() => {}}
+          onViewDetails={(id) => setSelectedContactIdForDetails(id)}
           onEdit={() => {}}
           onDelete={() => {}}
           hasActiveFilters={hasActiveFilters}
           onResetFilters={resetFilters}
         />
       </main>
+
+      {/* Contact Detail Modal */}
+      <ContactDetailModal
+        contactId={selectedContactIdForDetails}
+        isOpen={Boolean(selectedContactIdForDetails)}
+        onClose={() => setSelectedContactIdForDetails(null)}
+        allTags={tags}
+        onContactModified={refresh}
+        onEdit={() => {}}
+      />
     </div>
   );
 };
