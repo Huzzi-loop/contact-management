@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { Users, AlertTriangle } from 'lucide-react';
 import { useContacts } from './hooks/useContacts';
 import { useTags } from './hooks/useTags';
+import { useToast } from './hooks/useToast';
 import { ContactFilters } from './components/contacts/ContactFilters';
 import { ContactTable } from './components/contacts/ContactTable';
 import { ContactDetailModal } from './components/contacts/ContactDetailModal';
 import { CreateContactModal } from './components/contacts/CreateContactModal';
 import { EditContactModal } from './components/contacts/EditContactModal';
-import type { ContactWithTags, ContactWithDetails } from './types';
+import { ConflictModal } from './components/contacts/ConflictModal';
+import type { ContactWithTags, ContactWithDetails, OccConflictDetails } from './types';
 
 export const App: React.FC = () => {
   const {
@@ -32,10 +34,12 @@ export const App: React.FC = () => {
   } = useContacts();
 
   const { tags } = useTags();
+  const { showToast } = useToast();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedContactIdForDetails, setSelectedContactIdForDetails] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editContactTarget, setEditContactTarget] = useState<ContactWithTags | ContactWithDetails | null>(null);
+  const [conflictDetails, setConflictDetails] = useState<OccConflictDetails<ContactWithDetails> | null>(null);
 
   const handleSelectToggle = (id: string) => {
     setSelectedIds((prev) =>
@@ -52,6 +56,15 @@ export const App: React.FC = () => {
     } else {
       setSelectedIds((prev) => Array.from(new Set([...prev, ...pageIds])));
     }
+  };
+
+  const handleReloadConflict = () => {
+    if (conflictDetails?.latestContact) {
+      setEditContactTarget(conflictDetails.latestContact);
+    }
+    setConflictDetails(null);
+    refresh();
+    showToast('Loaded latest contact record from server. Please review and save.', 'info');
   };
 
   return (
@@ -153,7 +166,15 @@ export const App: React.FC = () => {
             setSelectedContactIdForDetails(editContactTarget?.id || null);
           }
         }}
-        onConflict={() => {}}
+        onConflict={(details) => setConflictDetails(details || null)}
+      />
+
+      {/* 409 OCC Conflict Resolution Modal */}
+      <ConflictModal
+        isOpen={Boolean(conflictDetails)}
+        onClose={() => setConflictDetails(null)}
+        conflictDetails={conflictDetails || undefined}
+        onReloadLatest={handleReloadConflict}
       />
 
       {/* Contact Detail Modal */}
