@@ -11,6 +11,7 @@ import { EditContactModal } from './components/contacts/EditContactModal';
 import { ConflictModal } from './components/contacts/ConflictModal';
 import { BulkActionBar } from './components/contacts/BulkActionBar';
 import { BulkTagModal } from './components/contacts/BulkTagModal';
+import { CreateTagModal } from './components/contacts/CreateTagModal';
 import type { ContactWithTags, ContactWithDetails, OccConflictDetails } from './types';
 
 export const App: React.FC = () => {
@@ -35,11 +36,12 @@ export const App: React.FC = () => {
     refresh,
   } = useContacts();
 
-  const { tags } = useTags();
+  const { tags, createTag, reloadTags } = useTags();
   const { showToast } = useToast();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedContactIdForDetails, setSelectedContactIdForDetails] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCreateTagModalOpen, setIsCreateTagModalOpen] = useState(false);
   const [isBulkTagModalOpen, setIsBulkTagModalOpen] = useState(false);
   const [editContactTarget, setEditContactTarget] = useState<ContactWithTags | ContactWithDetails | null>(null);
   const [conflictDetails, setConflictDetails] = useState<OccConflictDetails<ContactWithDetails> | null>(null);
@@ -127,6 +129,7 @@ export const App: React.FC = () => {
           hasActiveFilters={hasActiveFilters}
           onReset={resetFilters}
           onCreateContact={() => setIsCreateModalOpen(true)}
+          onCreateTag={() => setIsCreateTagModalOpen(true)}
         />
 
         {/* Contacts Table */}
@@ -167,6 +170,14 @@ export const App: React.FC = () => {
           setSelectedIds([]);
           refresh();
         }}
+      />
+
+      {/* Create Tag Modal */}
+      <CreateTagModal
+        isOpen={isCreateTagModalOpen}
+        onClose={() => setIsCreateTagModalOpen(false)}
+        onCreateTag={createTag}
+        onSuccess={reloadTags}
       />
 
       {/* Create Contact Modal */}
