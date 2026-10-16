@@ -279,7 +279,7 @@ export const ContactDetailModal: React.FC<ContactDetailModalProps> = ({
                 Recent Activity History
               </h3>
               <span className="text-xs text-slate-400">
-                {contact.recentActivities?.length || 0} events
+                {contact.recentActivities?.length || 0} {contact.recentActivities?.length === 1 ? 'activity' : 'activities'}
               </span>
             </div>
 

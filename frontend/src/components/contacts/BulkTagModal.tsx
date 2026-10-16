@@ -59,8 +59,10 @@ export const BulkTagModal: React.FC<BulkTagModalProps> = ({
       };
 
       const result = await contactsApi.bulkUpdateTags(payload);
+      const tagText = `${result.tagCount} tag${result.tagCount === 1 ? '' : 's'}`;
+      const contactText = `${result.affectedContacts} contact${result.affectedContacts === 1 ? '' : 's'}`;
       showToast(
-        `Successfully ${action === 'add' ? 'assigned' : 'removed'} ${result.tagCount} tag(s) across ${result.affectedContacts} contact(s)`,
+        `${action === 'add' ? 'Added' : 'Removed'} ${tagText} across ${contactText}`,
         'success'
       );
       handleClose();
@@ -85,10 +87,10 @@ export const BulkTagModal: React.FC<BulkTagModalProps> = ({
           <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
             <TagIcon className="w-4 h-4" />
           </div>
-          <span>Bulk Manage Tags</span>
+          <span>Manage Tags</span>
         </div>
       }
-      description={`Apply tag changes to ${selectedContactIds.length} selected contact${
+      description={`Select tags to add or remove for the ${selectedContactIds.length} selected contact${
         selectedContactIds.length === 1 ? '' : 's'
       }.`}
       footer={

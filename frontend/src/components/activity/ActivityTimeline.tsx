@@ -99,7 +99,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ activities }
 
                     {/* Metadata rendering if present */}
                     {activity.metadata && Object.keys(activity.metadata).length > 0 && (
-                      <div className="mt-1 text-[11px] text-slate-500 bg-slate-50 rounded p-1.5 border border-slate-100 font-mono">
+                      <div className="mt-1 text-[11px] text-slate-600 bg-slate-100/80 rounded-md px-2 py-1 border border-slate-200/80 inline-block font-medium">
                         {activity.metadata.updatedFields ? (
                           <span>Updated: {activity.metadata.updatedFields.join(', ')}</span>
                         ) : activity.metadata.tagName ? (

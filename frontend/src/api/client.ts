@@ -18,10 +18,16 @@ apiClient.interceptors.response.use(
   },
   (error: AxiosError<{ success?: boolean; error?: { message?: string; code?: string; details?: any } }>) => {
     const errorData = error.response?.data;
-    const errorMessage =
-      errorData?.error?.message ||
-      error.message ||
-      'An unexpected error occurred. Please try again.';
+    let errorMessage = errorData?.error?.message;
+    if (!errorMessage) {
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        errorMessage = 'Request timed out. Please try again.';
+      } else if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+        errorMessage = 'Unable to connect to the server. Please check your network connection and try again.';
+      } else {
+        errorMessage = error.message || 'An unexpected error occurred. Please try again.';
+      }
+    }
 
     return Promise.reject({
       ...error,

@@ -212,7 +212,7 @@ export const App: React.FC = () => {
         availableTags={tags}
       />
 
-      {/* Edit Contact Modal with OCC Version Checking */}
+      {/* Edit Contact Modal */}
       <EditContactModal
         contact={editContactTarget}
         isOpen={Boolean(editContactTarget)}
@@ -226,7 +226,7 @@ export const App: React.FC = () => {
         onConflict={(details) => setConflictDetails(details || null)}
       />
 
-      {/* 409 OCC Conflict Resolution Modal */}
+      {/* Conflict Resolution Modal */}
       <ConflictModal
         isOpen={Boolean(conflictDetails)}
         onClose={() => setConflictDetails(null)}
@@ -250,7 +250,7 @@ export const App: React.FC = () => {
         onClose={() => setDeleteTarget(null)}
         maxWidth="sm"
         title="Delete Contact"
-        description={`Are you sure you want to delete ${deleteTarget ? `${deleteTarget.firstName} ${deleteTarget.lastName}`.trim() : 'this contact'}? This contact will be soft-deleted and can be recovered if necessary.`}
+        description={`Are you sure you want to delete ${deleteTarget ? `${deleteTarget.firstName} ${deleteTarget.lastName}`.trim() : 'this contact'}?`}
         footer={
           <div className="flex items-center justify-end gap-2 w-full">
             <Button
@@ -273,7 +273,7 @@ export const App: React.FC = () => {
         }
       >
         <p className="text-sm text-slate-600">
-          This will move <strong className="text-slate-900">{deleteTarget ? `${deleteTarget.firstName} ${deleteTarget.lastName}`.trim() : 'this contact'}</strong> to the archive. All associated activity logs and tags will be retained for audit purposes.
+          This will remove <strong className="text-slate-900">{deleteTarget ? `${deleteTarget.firstName} ${deleteTarget.lastName}`.trim() : 'this contact'}</strong> from your active contacts list. Their past activity and tag history will remain safely preserved.
         </p>
       </Modal>
     </div>
