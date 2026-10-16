@@ -12,6 +12,10 @@ import { ConflictModal } from './components/contacts/ConflictModal';
 import { BulkActionBar } from './components/contacts/BulkActionBar';
 import { BulkTagModal } from './components/contacts/BulkTagModal';
 import { CreateTagModal } from './components/contacts/CreateTagModal';
+import { Modal } from './components/common/Modal';
+import { Button } from './components/common/Button';
+import { contactsApi } from './api';
+import { parseApiError } from './utils/errorHandler';
 import type { ContactWithTags, ContactWithDetails, OccConflictDetails } from './types';
 
 export const App: React.FC = () => {
@@ -45,6 +49,8 @@ export const App: React.FC = () => {
   const [isBulkTagModalOpen, setIsBulkTagModalOpen] = useState(false);
   const [editContactTarget, setEditContactTarget] = useState<ContactWithTags | ContactWithDetails | null>(null);
   const [conflictDetails, setConflictDetails] = useState<OccConflictDetails<ContactWithDetails> | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ContactWithTags | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleSelectToggle = (id: string) => {
     setSelectedIds((prev) =>
@@ -70,6 +76,23 @@ export const App: React.FC = () => {
     setConflictDetails(null);
     refresh();
     showToast('Loaded latest contact record from server. Please review and save.', 'info');
+  };
+
+  const handleDeleteContact = async () => {
+    if (!deleteTarget) return;
+    const fullName = `${deleteTarget.firstName} ${deleteTarget.lastName}`.trim();
+    try {
+      setIsDeleting(true);
+      await contactsApi.deleteContact(deleteTarget.id);
+      showToast(`Contact "${fullName}" deleted successfully`, 'success');
+      setDeleteTarget(null);
+      refresh();
+    } catch (err: any) {
+      const parsed = parseApiError(err);
+      showToast(parsed.message, 'error');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -147,7 +170,7 @@ export const App: React.FC = () => {
           onSelectAllPage={handleSelectAllPage}
           onViewDetails={(id) => setSelectedContactIdForDetails(id)}
           onEdit={(contact) => setEditContactTarget(contact)}
-          onDelete={() => {}}
+          onDelete={(contact) => setDeleteTarget(contact)}
           hasActiveFilters={hasActiveFilters}
           onResetFilters={resetFilters}
         />
@@ -219,6 +242,39 @@ export const App: React.FC = () => {
         onContactModified={refresh}
         onEdit={(detailContact: ContactWithDetails) => setEditContactTarget(detailContact)}
       />
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        maxWidth="sm"
+        title="Delete Contact"
+        description={`Are you sure you want to delete ${deleteTarget ? `${deleteTarget.firstName} ${deleteTarget.lastName}`.trim() : 'this contact'}? This contact will be soft-deleted and can be recovered if necessary.`}
+        footer={
+          <div className="flex items-center justify-end gap-2 w-full">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setDeleteTarget(null)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={handleDeleteContact}
+              loading={isDeleting}
+            >
+              Delete Contact
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-sm text-slate-600">
+          This will move <strong className="text-slate-900">{deleteTarget ? `${deleteTarget.firstName} ${deleteTarget.lastName}`.trim() : 'this contact'}</strong> to the archive. All associated activity logs and tags will be retained for audit purposes.
+        </p>
+      </Modal>
     </div>
   );
 };
