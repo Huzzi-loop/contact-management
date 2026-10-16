@@ -490,3 +490,41 @@ At massive scale, querying non-existent keys or performing repeated uniqueness c
 #### B. Read/Write Replica Splitting
 * Direct all read-heavy queries (`GET /contacts`, filtering, sorting, activity timelines) to read-only replicas behind a round-robin load balancer.
 * Reserve the primary PostgreSQL instance exclusively for transactional writes, OCC updates, and bulk tagging operations.
+
+
+---
+
+## 🤖 AI Usage Disclosure
+
+*As permitted by the assignment guidelines, AI tooling was leveraged as an active collaborator during development.*
+
+### 1. Tool Used
+* **Platform**: Google Antigravity
+* **Model**: Gemini 3.8 Flash (High)
+
+### 2. How It Was Used
+The model served as a dedicated **pair-programming and debugging partner** across all stages of the Software Development Life Cycle (SDLC):
+* **Architecture & Planning**: Brainstorming schema relationships, evaluating concurrency tradeoffs (OCC vs. distributed locks), and reviewing take-home requirements.
+* **Scaffolding & Boilerplate**: Generating initial DTO interfaces, Express routes, and Tailwind CSS component layouts.
+* **Testing & Verification**: Scaffolding repetitive test cases for boundary validation, race-condition simulation, and atomic UI component rendering.
+* **Debugging & Code Review**: Identifying edge-case inconsistencies (such as full-name string interpolation in deletion modals and eliminating N+1 queries when loading contact tags).
+
+### 3. AI Suggestions Changed or Rejected
+During the planning and implementation phases, several AI suggestions were intentionally challenged and redirected:
+
+* **Switching from Prisma to Drizzle ORM (Binary & Cold-Start Optimization)**:  
+  The AI initially installed and generated the backend using Prisma ORM. I challenged this due to Prisma’s heavy query-engine binary footprint, high memory consumption, and slower cold starts in serverless/containerized environments. I directed a complete rebuild using **Drizzle ORM + `pg`**, resulting in zero runtime overhead, native SQL query transparency, and seamless support for PostgreSQL partial indexes.
+
+* **Pivoting from Flat MVC to Feature-Driven Domain Modules (`src/modules/*`)**:  
+  The AI originally organized the codebase into flat global directories (`src/controllers`, `src/services`, `src/repositories`). Before core API development began, I paused execution and mandated restructuring into collocated domain modules (`src/modules/contact`, `src/modules/tag`). This brought high domain cohesion, made files easier to maintain, and enabled clean isolated unit testing for each entity.
+
+* **Enforcing Soft Deletes with Partial Unique Indexes**:  
+  When discussing deletion behavior, the AI initially leaned toward physical deletes. I intervened to establish a soft-delete lifecycle (`deleted_at`), pointing out that CRM audit logs and relational integrity must survive contact deletion. I also specified pairing this with a PostgreSQL partial unique index (`WHERE deleted_at IS NULL AND email IS NOT NULL`) so soft-deleted contacts do not block legitimate email re-use.
+
+* **Rejecting SQLite in Favor of PostgreSQL**:  
+  The AI initially suggested SQLite for "zero-config" evaluation. I challenged this choice because SQLite’s single-writer locking model contradicts the assignment’s concurrent update and enterprise scale requirements. I directed the architecture to **PostgreSQL**, ensuring true ACID compliance, row-level write serialization, and production-grade MVCC.
+
+* **Rejecting Denormalized Array Tags (`tags: text[]`) for a 3NF Junction Table**:  
+  The AI initially suggested storing tags as a string array column directly on the contacts table for simpler single-query reads. I rejected this because it violates 3rd Normal Form (3NF): renaming a tag or changing its color would require an expensive table-wide scan, and it completely prevents enforcing foreign key referential integrity. I insisted on a normalized junction table (`contact_tags`) with composite primary keys, cascading deletes, and batch loading to prevent N+1 queries.
+
+
