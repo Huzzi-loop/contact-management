@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, AlertTriangle } from 'lucide-react';
+import { Users, AlertTriangle, Search } from 'lucide-react';
 import { useContacts } from './hooks/useContacts';
 import { ContactRow } from './components/contacts/ContactRow';
 import { TableRowSkeleton } from './components/common/Skeleton';
@@ -11,6 +11,8 @@ export const App: React.FC = () => {
     meta,
     loading,
     error,
+    searchInput,
+    setSearchInput,
     refresh,
   } = useContacts();
 
@@ -45,7 +47,29 @@ export const App: React.FC = () => {
       </header>
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Error Alert if query fails */}
+        {/* Search Bar Container */}
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm mb-6">
+          <div className="relative">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search by Name, Email, or Phone..."
+              className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white placeholder-slate-400"
+            />
+            {searchInput && (
+              <button
+                onClick={() => setSearchInput('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600 bg-slate-100 rounded px-1.5 py-0.5"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Error Alert */}
         {error && (
           <div className="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex items-center justify-between">
             <div className="flex items-center gap-2.5">
@@ -95,8 +119,15 @@ export const App: React.FC = () => {
                   <tr>
                     <td colSpan={8}>
                       <EmptyState
-                        title="No contacts yet"
-                        description="Your contact workspace is empty. Get started by adding your first contact."
+                        icon={searchInput ? 'search' : 'users'}
+                        title={searchInput ? 'No matching contacts' : 'No contacts yet'}
+                        description={
+                          searchInput
+                            ? `No contacts found matching "${searchInput}".`
+                            : 'Your contact workspace is empty. Get started by adding your first contact.'
+                        }
+                        actionLabel={searchInput ? 'Clear search' : undefined}
+                        onAction={searchInput ? () => setSearchInput('') : undefined}
                       />
                     </td>
                   </tr>
