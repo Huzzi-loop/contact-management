@@ -1,104 +1,109 @@
 import React, { useState } from 'react';
-import type { ContactWithTags } from './types';
-import { formatDateOnly } from './utils/formatDate';
-
-// Mock contacts for initial UI layout verification
-const MOCK_CONTACTS: ContactWithTags[] = [
-  {
-    id: '1',
-    firstName: 'Sarah',
-    lastName: 'Connor',
-    email: 'sarah.connor@cyberdyne.com',
-    phone: '+1 555-0199',
-    company: 'Resistance HQ',
-    version: 1,
-    deletedAt: null,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    tags: [
-      { id: 't1', name: 'VIP', color: '#8B5CF6', createdAt: '', updatedAt: '' },
-      { id: 't2', name: 'Customer', color: '#10B981', createdAt: '', updatedAt: '' },
-    ],
-  },
-  {
-    id: '2',
-    firstName: 'John',
-    lastName: 'Doe',
-    email: 'john.doe@acme.inc',
-    phone: '+1 555-0142',
-    company: 'Acme Corp',
-    version: 1,
-    deletedAt: null,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    tags: [
-      { id: 't3', name: 'Lead', color: '#3B82F6', createdAt: '', updatedAt: '' },
-    ],
-  },
-];
+import { Users, AlertTriangle } from 'lucide-react';
+import { useContacts } from './hooks/useContacts';
+import { ContactRow } from './components/contacts/ContactRow';
+import { TableRowSkeleton } from './components/common/Skeleton';
+import { EmptyState } from './components/common/EmptyState';
 
 export const App: React.FC = () => {
-  const [contacts] = useState<ContactWithTags[]>(MOCK_CONTACTS);
+  const {
+    contacts,
+    meta,
+    loading,
+    error,
+    refresh,
+  } = useContacts();
+
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  const handleSelectToggle = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <header className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-bold text-slate-900 leading-tight">CRM Workspace</h1>
-            <p className="text-xs text-slate-500">Contact Management & Tagging</p>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <h1 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+                CRM Workspace
+              </h1>
+              <p className="text-xs text-slate-500">Contact Management & Tagging</p>
+            </div>
           </div>
+
           <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">
-            {contacts.length} Contacts (Mock Preview)
+            {meta.total} {meta.total === 1 ? 'Contact' : 'Contacts'}
           </span>
         </div>
       </header>
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Error Alert if query fails */}
+        {error && (
+          <div className="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
+              <span>{error}</span>
+            </div>
+            <button
+              onClick={refresh}
+              className="text-xs font-semibold text-rose-700 hover:text-rose-900 underline ml-4"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-            <thead className="bg-slate-50 text-slate-600 text-xs font-semibold uppercase tracking-wider">
-              <tr>
-                <th className="px-4 py-3.5">Name</th>
-                <th className="px-4 py-3.5">Email</th>
-                <th className="px-4 py-3.5">Phone</th>
-                <th className="px-4 py-3.5">Company</th>
-                <th className="px-4 py-3.5">Tags</th>
-                <th className="px-4 py-3.5">Created</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 bg-white">
-              {contacts.map((contact) => (
-                <tr key={contact.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3.5 font-medium text-slate-900">
-                    {contact.firstName} {contact.lastName}
-                  </td>
-                  <td className="px-4 py-3.5 text-slate-600">{contact.email}</td>
-                  <td className="px-4 py-3.5 text-slate-600">{contact.phone}</td>
-                  <td className="px-4 py-3.5 text-slate-700">{contact.company}</td>
-                  <td className="px-4 py-3.5">
-                    <div className="flex gap-1">
-                      {contact.tags.map((t) => (
-                        <span
-                          key={t.id}
-                          className="text-xs px-2 py-0.5 rounded-full font-medium"
-                          style={{
-                            backgroundColor: `${t.color}20`,
-                            color: t.color,
-                          }}
-                        >
-                          {t.name}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3.5 text-slate-500 text-xs">
-                    {formatDateOnly(contact.createdAt)}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+              <thead className="bg-slate-50 text-slate-600 text-xs font-semibold uppercase tracking-wider">
+                <tr>
+                  <th className="px-4 py-3.5 w-10 text-center"></th>
+                  <th className="px-4 py-3.5">Name</th>
+                  <th className="px-4 py-3.5">Email</th>
+                  <th className="px-4 py-3.5">Phone</th>
+                  <th className="px-4 py-3.5">Company</th>
+                  <th className="px-4 py-3.5">Tags</th>
+                  <th className="px-4 py-3.5">Created</th>
+                  <th className="px-4 py-3.5 text-right w-24">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white">
+                {loading ? (
+                  <TableRowSkeleton rows={5} cols={8} />
+                ) : contacts.length > 0 ? (
+                  contacts.map((contact) => (
+                    <ContactRow
+                      key={contact.id}
+                      contact={contact}
+                      isSelected={selectedIds.includes(contact.id)}
+                      onSelectToggle={handleSelectToggle}
+                      onViewDetails={() => {}}
+                      onEdit={() => {}}
+                      onDelete={() => {}}
+                    />
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={8}>
+                      <EmptyState
+                        title="No contacts yet"
+                        description="Your contact workspace is empty. Get started by adding your first contact."
+                      />
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </main>
     </div>
