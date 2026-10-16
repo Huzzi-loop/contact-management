@@ -1,5 +1,6 @@
 import React from 'react';
 import { Users, SearchX } from 'lucide-react';
+import { Button } from './Button';
 
 export interface EmptyStateProps {
   title: string;
@@ -30,13 +31,9 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         {description}
       </p>
       {actionLabel && onAction && (
-        <button
-          type="button"
-          onClick={onAction}
-          className="px-3 py-1.5 text-xs border border-slate-300 rounded-lg hover:bg-slate-50 font-medium text-slate-700 transition-colors"
-        >
+        <Button variant="outline" size="sm" onClick={onAction}>
           {actionLabel}
-        </button>
+        </Button>
       )}
     </div>
   );
