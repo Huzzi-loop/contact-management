@@ -211,3 +211,69 @@ Rather than relying on database triggers or overwriting previous states, mutatio
 
 ### 11. Fail-Fast Boundary Validation with Joi Middleware
 All route inputs (`params`, `query`, `body`) are validated via reusable middleware before reaching controller code. This ensures malformed data is rejected at the HTTP boundary, keeping service logic free of defensive type and presence checks.
+
+
+---
+
+## 🗄️ Data Model & Schema
+
+The database design adheres to 3rd Normal Form (3NF) with explicit foreign key cascading rules, partial unique indexing, and an append-only audit trail.
+
+### Entity-Relationship Diagram
+
+```mermaid
+erDiagram
+    CONTACTS ||--o{ CONTACT_TAGS : "has many"
+    TAGS ||--o{ CONTACT_TAGS : "tagged in"
+    CONTACTS ||--o{ CONTACT_ACTIVITIES : "records"
+
+    CONTACTS {
+        uuid id PK
+        varchar first_name
+        varchar last_name
+        varchar email "NULLABLE, Partial Unique"
+        varchar phone "NULLABLE"
+        varchar company "NULLABLE, Indexed"
+        integer version "Default: 1 (OCC)"
+        timestamp deleted_at "NULLABLE (Soft Delete, Indexed)"
+        timestamp created_at "Indexed"
+        timestamp updated_at
+    }
+
+    TAGS {
+        uuid id PK
+        varchar name "UNIQUE"
+        varchar color "Hex code"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    CONTACT_TAGS {
+        uuid contact_id PK, FK "ON DELETE CASCADE"
+        uuid tag_id PK, FK "ON DELETE CASCADE"
+        timestamp assigned_at
+    }
+
+    CONTACT_ACTIVITIES {
+        uuid id PK
+        uuid contact_id FK "ON DELETE CASCADE"
+        varchar type "CONTACT_CREATED, CONTACT_UPDATED, TAG_ADDED, etc."
+        text description
+        jsonb metadata "Diff details"
+        timestamp created_at "Indexed with contact_id"
+    }
+```
+
+### Schema & Indexing Specifications
+
+| Table | Primary Key | Key Columns | Indexes & Constraints |
+| :--- | :--- | :--- | :--- |
+| **`contacts`** | `id` (UUIDv4) | `first_name`, `last_name`, `email`, `phone`, `company`, `version` | • **Partial Unique**: `idx_contacts_active_email` on `email` (`WHERE deleted_at IS NULL AND email IS NOT NULL`)<br>• **B-tree Indexes**: `company`, `created_at`, `deleted_at` |
+| **`tags`** | `id` (UUIDv4) | `name`, `color` | • **Unique Constraint**: `name` (prevents case-sensitive duplicate tag labels) |
+| **`contact_tags`** | `(contact_id, tag_id)` | `contact_id`, `tag_id`, `assigned_at` | • **Composite PK**: Guarantees a tag can only be linked once to a contact<br>• **Foreign Keys**: `ON DELETE CASCADE` on both references<br>• **B-tree Index**: `tag_id` for fast reverse tag lookups |
+| **`contact_activities`** | `id` (UUIDv4) | `contact_id`, `type`, `description`, `metadata` (JSONB), `created_at` | • **Compound Index**: `idx_activities_contact_created` on `(contact_id, created_at DESC)` for sub-millisecond timeline queries |
+
+### Integrity & Lifecycle Guarantees
+1. **Cascade Isolation**: Deleting a tag deletes all associated rows in `contact_tags` via `ON DELETE CASCADE` without affecting the contacts themselves.
+2. **Soft-Delete Preservation**: Deleting a contact sets `deleted_at = NOW()`. Associated `contact_tags` and `contact_activities` remain preserved in the database for auditability and compliance.
+3. **Audit Immutability**: The `contact_activities` table is append-only. There are no `UPDATE` or `DELETE` endpoints exposed for activity logs.
