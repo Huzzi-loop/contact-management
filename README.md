@@ -26,7 +26,8 @@ This project is an end-to-end CRM workspace allowing teams to browse, search, fi
 5. [Data Model & Schema](#-data-model--schema)
 6. [Concurrent Update Strategy (OCC)](#-concurrent-update-strategy-occ)
 7. [Scale Considerations](#-scale-considerations)
-8. [AI Usage Disclosure](#-ai-usage-disclosure)
+8. [Known Limitations & Tradeoffs](#-known-limitations--tradeoffs)
+9. [AI Usage Disclosure](#-ai-usage-disclosure)
 
 ---
 
@@ -100,18 +101,77 @@ npm test
 
 The system is built with a focus on simplicity, execution speed, and explicit design patterns that avoid framework magic.
 
-### 1. Backend Architecture: Express.js (TypeScript) & 3-Tier Layered Pattern
+### 1. Frontend Architecture: React 19, TypeScript & Component Hierarchy
+* **Rationale**: Built with modern **React 19 + TypeScript** on Vite. The frontend architecture adheres to the **Container / Presentational & Modular Domain Pattern**, preventing monolithic files and ensuring maximum component reusability and testability.
+* **Component Hierarchy & Clean Separation**:
+  * **Primitives (`src/components/common/`)**: Reusable, unopinionated UI building blocks (`Button`, `Input`, `Select`, `Modal`, `Badge`, `Pagination`, `EmptyState`, `Skeleton`). All inputs support standard HTML attributes, accessibility tags (`role="dialog"`, `aria-modal`), and variant configurations.
+  * **Domain Contacts (`src/components/contacts/`)**: Domain-specific feature components (`ContactTable`, `ContactRow`, `ContactFilters`, `ContactDetailModal`, `CreateContactModal`, `EditContactModal`, `ConflictModal`, `BulkActionBar`, `BulkTagModal`, `CreateTagModal`).
+  * **Domain Activity (`src/components/activity/`)**: Chronological audit trail presentation (`ActivityTimeline`) mapping event types (`CONTACT_CREATED`, `TAG_ADDED`, etc.) to distinct icons and formatted metadata diffs.
+* **Component Architecture Overview**:
+
+```mermaid
+graph TD
+    App[App Container] --> Header[Header & Contact Counter]
+    App --> Alert[Global Error Alert Banner]
+    App --> ContactFilters[ContactFilters Component]
+    App --> ContactTable[ContactTable Component]
+    App --> BulkActionBar[Floating Bulk Action Bar]
+    App --> Modals[Modal Dialog Overlays]
+
+    ContactFilters --> SearchInput[Debounced Search Bar]
+    ContactFilters --> TagFilter[Tag Selector]
+    ContactFilters --> CompanyFilter[Company Input]
+    ContactFilters --> SortControl[Sort Dropdown]
+    ContactFilters --> ActionBtns[New Tag & Add Contact Buttons]
+
+    ContactTable --> TableHeader[Sortable Columns & Bulk Checkbox]
+    ContactTable --> TableRows[ContactRow × N]
+    ContactTable --> Skeletons[TableRowSkeleton]
+    ContactTable --> EmptyState[EmptyState Component]
+    ContactTable --> Pagination[Pagination Controls]
+
+    ContactRow --> Avatar[Initials Avatar]
+    ContactRow --> TagBadges[Badge × N]
+    ContactRow --> RowActions[View, Edit, Delete Actions]
+
+    Modals --> ContactDetailModal[ContactDetailModal & ActivityTimeline]
+    Modals --> CreateContactModal[CreateContactModal]
+    Modals --> EditContactModal[EditContactModal]
+    Modals --> ConflictModal[409 OCC Conflict Resolution Modal]
+    Modals --> BulkTagModal[Bulk Tag Assign/Remove Modal]
+    Modals --> CreateTagModal[Create Tag Modal]
+    Modals --> DeleteModal[Delete Confirmation Modal]
+```
+
+* **Frontend State Management Approach**:
+  * **Server Query State (`useContacts`)**: Encapsulates all query parameters (`search`, `tagId`, `company`, `sortBy`, `sortOrder`, `page`, `limit`), triggers debounced search (350ms delay via `useDebounce`), auto-resets pagination to page 1 on filter changes, and exposes an atomic `refresh()` trigger.
+  * **Resource Detail State (`useContactDetail`)**: Encapsulates single contact fetching, activity history retrieval, and atomic tag additions/removals with optimistic UI updates.
+  * **Notification State (`ToastContext` / `useToast`)**: A lightweight React Context provider delivering auto-dismissing toast notifications across 4 semantic states (`success`, `error`, `warning`, `info`) with manual dismiss controls.
+  * **Local UI State**: Kept strictly local to relevant components (e.g., modal visibility, form errors, selection checkboxes) to prevent unnecessary re-renders of the root tree.
+
+* **UI/UX & Engineering Decisions**:
+  * **Visual Polish & Design System**: Tailored with the Tailwind CSS `Slate` palette and `Inter` typography. Standardized micro-interactions include hover state transitions, avatar generation from initials, color-matched badges with 15% opacity fills, and backdrop-blurred modal overlays.
+  * **Resilient User Feedback**:
+    * Zero layout shifts: Table and detail views display structured skeletons (`TableRowSkeleton`, `DetailSkeleton`) during asynchronous operations.
+    * Dual Empty States: Distinct visual states and messaging for "Workspace is empty" vs "No matching contacts found" (with a 1-click "Clear all filters" CTA).
+    * Floating Bulk Bar: An animated, sticky action bar pinned to the viewport bottom whenever rows are selected, featuring a live selection counter, bulk tag management, and clear selection triggers.
+  * **Optimistic Concurrency Control (OCC) Conflict UX**: Catches HTTP `409 Conflict` errors and surfaces [`ConflictModal`](file:///Users/huzzi/Documents/antigravity/HighLevel/crm/frontend/src/components/contacts/ConflictModal.tsx). Displays the base version vs latest database version and renders the server's snapshot so the user can inspect changes and reload latest data non-destructively.
+  * **Accessibility (a11y)**: Modal dialogs implement `role="dialog"`, `aria-modal="true"`, background scroll locking (`document.body.style.overflow = 'hidden'`), and `Escape` key listeners. The select-all table checkbox properly controls indeterminate states via DOM element refs.
+
+---
+
+### 2. Backend Architecture: Express.js (TypeScript) & 3-Tier Layered Pattern
 * **Rationale**: We deliberately selected Express.js because we wanted a lean, lightweight backend that spins up fast without framework bloat. Prior hands-on production experience with Express allowed us to assemble a clean architecture without fighting framework abstractions.
 * **Separation of Concerns**: We structured the application into an explicit 3-tier architecture:
   * **Controllers** (`modules/*/contact.controller.ts`): Responsible strictly for HTTP protocol concerns, extracting validated inputs, setting HTTP status codes (`200`, `201`, `409`), and dispatching responses.
   * **Services** (`modules/*/contact.service.ts`): Pure business logic—enforcing OCC checks, uniqueness validation, coordinating multi-step workflows, and logging audit history.
   * **Repositories** (`modules/*/contact.repository.ts`): The database access layer encapsulating all Drizzle ORM queries, transactions, and raw SQL expressions.
 
-### 2. ORM & Query Layer: Drizzle ORM
+### 3. ORM & Query Layer: Drizzle ORM
 * **Rationale**: Drizzle acts as a thin TypeScript SQL builder. It compiles queries with zero runtime overhead, provides complete visibility into the generated SQL, and delivers native support for PostgreSQL-specific features like partial indexes, composite primary keys, and `ON CONFLICT DO NOTHING`.
 * **Prisma Comparison**: Unlike heavier ORMs like Prisma, Drizzle does not rely on an opaque external query-engine binary or hidden query translations, making atomic expressions (like `version = version + 1`) concise and transparent.
 
-### 3. Database: PostgreSQL
+### 4. Database: PostgreSQL
 * **Rationale**: Selected strictly for its industry-standard **ACID compliance**, which is non-negotiable for:
   * **Atomic OCC Version Bumps**: Ensuring the version comparison (`WHERE version = :expected`) and increment (`version = version + 1`) happen as an atomic database operation.
   * **Transactional Bulk Tagging**: Guaranteeing that tagging dozens of contacts simultaneously either commits completely or rolls back safely.
@@ -491,6 +551,31 @@ At massive scale, querying non-existent keys or performing repeated uniqueness c
 * Direct all read-heavy queries (`GET /contacts`, filtering, sorting, activity timelines) to read-only replicas behind a round-robin load balancer.
 * Reserve the primary PostgreSQL instance exclusively for transactional writes, OCC updates, and bulk tagging operations.
 
+---
+
+## ⚠️ Known Limitations & Tradeoffs
+
+In alignment with the assignment guidelines, this section outlines intentional boundaries and areas identified for production evolution:
+
+### 1. Entity-Level vs. Field-Level Concurrency
+* **Current Boundary**: The application employs whole-entity Optimistic Concurrency Control using an integer `version` field.
+* **Tradeoff**: If User A updates a contact's `phone` while User B concurrently updates their `company`, User A’s update triggers a `409 Conflict` requiring user review, even though the modified attributes are disjoint.
+* **Production Evolution**: As detailed in [Scale Considerations](#3-intelligent-concurrency-field-level-auto-merging), a mature enterprise deployment would implement 3-way field-level diffing to auto-merge non-overlapping attribute edits while reserving 409 conflicts strictly for identical field collisions.
+
+### 2. Offset-Based Pagination at Deep Offsets
+* **Current Boundary**: Paging is handled via SQL `LIMIT :limit OFFSET :offset`.
+* **Tradeoff**: This design was chosen intentionally to provide random-access navigation ("Jump to page 5") and display exact total record counts (`meta.totalPages`) in the tabular workspace. However, performance degrades on very deep pages (e.g. page 50,000) as PostgreSQL must scan and discard all preceding rows.
+* **Production Evolution**: At tens of millions of records, sequential browsing should transition to keyset / cursor pagination (`WHERE (created_at, id) < (:cursor_created_at, :cursor_id)`), running in constant $O(1)$ time.
+
+### 3. Direct Substring Search via `ILIKE`
+* **Current Boundary**: Search queries evaluate substrings using PostgreSQL `ILIKE` over concatenated name, email, and phone attributes.
+* **Tradeoff**: While clean, performant, and zero-dependency for tens of thousands of records, wildcard pattern matching (`%term%`) forces sequential table scans without specialized indexes.
+* **Production Evolution**: For enterprise scale with millions of records, search workloads should be offloaded to an **Elasticsearch/OpenSearch** cluster or accelerated natively with PostgreSQL **trigram GIN indexes (`pg_trgm`)**.
+
+### 4. Append-Only Audit History Growth
+* **Current Boundary**: Every contact update, tag addition, and removal appends an immutable record to `contact_activities`.
+* **Tradeoff**: While providing strict auditability and compliance, high-write environments will cause the audit table to grow rapidly without an automated retention or partitioning policy.
+* **Production Evolution**: Implement range partitioning on `contact_activities` by `created_at` (e.g. monthly partitions), archiving records older than 90 days to cloud cold storage (S3/GCS Parquet).
 
 ---
 
