@@ -117,7 +117,7 @@ export class ContactService {
     if (current.version !== dto.version) {
       const latest = await this.contactRepo.findByIdWithDetails(id);
       throw new ConflictError(
-        'The contact was modified by another user. Please reload the latest details.',
+        'Somebody else made changes to this contact. Please reload the latest details.',
         {
           currentVersion: current.version,
           submittedVersion: dto.version,
@@ -152,7 +152,7 @@ export class ContactService {
       // Race condition caught: another write committed between our read and write
       const latest = await this.contactRepo.findByIdWithDetails(id);
       throw new ConflictError(
-        'Concurrent update conflict detected. Please reload and try again.',
+        'Somebody else made changes to this contact. Please reload the latest details.',
         { latestContact: latest }
       );
     }
