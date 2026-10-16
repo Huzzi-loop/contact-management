@@ -22,8 +22,8 @@ export const createApp = (): Express => {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
-  // Basic Health Check route
-  app.get('/health', (_req: Request, res: Response) => {
+  // Basic Health Check route (accessible at /health and /api/health)
+  app.get(['/health', '/api/health'], (_req: Request, res: Response) => {
     return ApiResponse.success(
       res,
       {
