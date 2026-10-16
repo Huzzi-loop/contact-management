@@ -9,7 +9,16 @@ export const createApp = (): Express => {
   const app = express();
 
   // Middleware
-  app.use(cors());
+  app.use(
+    cors({
+      origin: true, // Automatically reflect requesting origin (e.g., http://localhost:3000, production domains)
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+      exposedHeaders: ['Content-Range', 'X-Content-Range'],
+    })
+  );
+  app.options('*', cors());
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 

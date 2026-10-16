@@ -6,12 +6,15 @@ import { config } from '../config/env';
 // Connection pool configuration
 export const pool = new Pool({
   connectionString: config.databaseUrl,
-  ssl: config.databaseUrl.includes('sslmode=require') || config.isProduction
-    ? { rejectUnauthorized: false }
-    : false,
-  max: 20,
+  ssl:
+    config.databaseUrl.includes('sslmode=require') ||
+    config.databaseUrl.includes('supabase.com') ||
+    config.isProduction
+      ? { rejectUnauthorized: false }
+      : false,
+  max: config.isProduction ? 5 : 20,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
+  connectionTimeoutMillis: 10000,
 });
 
 // Typed Drizzle database instance
