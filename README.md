@@ -183,8 +183,7 @@ While `email` is enforced as unique among active contacts, `phone` is deliberate
 * **Did we add an index for search?** No standard B-tree index is applied to the search fields because B-tree indexes cannot accelerate leading wildcard patterns (`'%term%'`).
 * **Alternatives Evaluated**:
   1. *Generated `tsvector` Column + GIN Index*: Stores tokenized terms in a dedicated column for PostgreSQL Full-Text Search. *Tradeoff*: Excellent for full words, but fails for partial substring matches (e.g., typing `"ohn"` for `"John"`).
-  2. *Trigram Index (`pg_trgm`)*: `CREATE INDEX ... USING gin (field gin_trgm_ops)`. The best native PostgreSQL solution for accelerating arbitrary substring `ILIKE` queries at scale.
-  3. *External Search Engine (Elasticsearch / Meilisearch)*: Offloads search load entirely from the primary transactional database.
+  2. *External Search Engine (Elasticsearch / Meilisearch)*: Offloads search load entirely from the primary transactional database.
 
 ### 7. Atomic Bulk Tagging & Concurrency Management
 * **Mechanism**: Bulk tag operations run inside an atomic database transaction. The service validates that all target `contactIds` and `tagIds` exist before executing a bulk insert with `ON CONFLICT DO NOTHING`.
@@ -277,3 +276,99 @@ erDiagram
 1. **Cascade Isolation**: Deleting a tag deletes all associated rows in `contact_tags` via `ON DELETE CASCADE` without affecting the contacts themselves.
 2. **Soft-Delete Preservation**: Deleting a contact sets `deleted_at = NOW()`. Associated `contact_tags` and `contact_activities` remain preserved in the database for auditability and compliance.
 3. **Audit Immutability**: The `contact_activities` table is append-only. There are no `UPDATE` or `DELETE` endpoints exposed for activity logs.
+
+
+---
+
+## 🔄 Concurrent Update Strategy (OCC)
+
+To prevent accidental data overwrites when multiple team members view and edit the same contact simultaneously, the application implements **Optimistic Concurrency Control (OCC)** using an integer `version` field.
+
+### OCC Sequence Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor UserA as User A (Browser)
+    actor UserB as User B (Browser)
+    participant API as Express API Server
+    participant DB as PostgreSQL Database
+
+    Note over UserA, DB: Both users load Contact #101 simultaneously
+    UserA->>API: GET /api/v1/contacts/101
+    API->>DB: SELECT * FROM contacts WHERE id = 101 AND deleted_at IS NULL
+    DB-->>API: Record returned (version: 1)
+    API-->>UserA: 200 OK (Payload with version: 1)
+
+    UserB->>API: GET /api/v1/contacts/101
+    API->>DB: SELECT * FROM contacts WHERE id = 101 AND deleted_at IS NULL
+    DB-->>API: Record returned (version: 1)
+    API-->>UserB: 200 OK (Payload with version: 1)
+
+    Note over UserB, DB: User B saves their edit first
+    UserB->>API: PATCH /api/v1/contacts/101 { company: "Wayne Tech", version: 1 }
+    API->>DB: UPDATE contacts SET company = 'Wayne Tech', version = 2 WHERE id = 101 AND version = 1
+    DB-->>API: Rows Affected = 1 (Commit Successful)
+    API-->>UserB: 200 OK (Updated Record with version: 2)
+
+    Note over UserA, DB: User A submits stale edit later
+    UserA->>API: PATCH /api/v1/contacts/101 { phone: "+1 555-0199", version: 1 }
+    API->>DB: Query current contact version
+    DB-->>API: Current version in DB is 2
+    Note over API: Version Mismatch Detected (DB: 2 != Submitted: 1)
+    API-->>UserA: 409 Conflict { error: "CONFLICT", latestContact: { ... } }
+
+    Note over UserA: ConflictModal displays diff and provides "Reload Latest" action
+```
+
+### End-to-End Implementation Details
+
+#### 1. Version Handshake & Atomic Write
+* When a user opens an edit form, the frontend retains the contact's initial `version` integer.
+* When saving, the client sends `{ ...fields, version: currentVersion }`.
+* The service verifies the version before updating, and the database executes an atomic conditional write:
+  ```sql
+  UPDATE contacts
+  SET first_name = :first_name,
+      company    = :company,
+      version    = version + 1,
+      updated_at = NOW()
+  WHERE id = :id 
+    AND version = :submittedVersion 
+    AND deleted_at IS NULL
+  RETURNING *;
+  ```
+* Even under high-concurrency race conditions where two requests arrive at the exact same millisecond, the database engine serializes row writes. Only one request will match `version = :submittedVersion`; the subsequent request will match `0` rows and trigger a conflict error.
+
+#### 2. The 409 Conflict API Contract
+When a conflict occurs, the API doesn't just fail with a generic message—it equips the client with the fresh state:
+```json
+{
+  "success": false,
+  "error": {
+    "code": "CONFLICT",
+    "message": "The contact was modified by another user. Please reload the latest details.",
+    "details": {
+      "currentVersion": 2,
+      "submittedVersion": 1,
+      "latestContact": {
+        "id": "c1f7a280-...",
+        "firstName": "Bruce",
+        "lastName": "Wayne",
+        "company": "Wayne Tech",
+        "version": 2
+      }
+    }
+  }
+}
+```
+
+#### 3. Client Conflict Resolution UX (`ConflictModal`)
+Instead of a destructive overwrite or an unhelpful error toast, the frontend catches the `409 Conflict` and triggers [`ConflictModal`](file:///Users/huzzi/Documents/antigravity/HighLevel/crm/frontend/src/components/contacts/ConflictModal.tsx):
+* **Notification**: Informs the user that another teammate saved changes while they were working.
+* **Non-Destructive Reload**: A **"Reload Latest"** button updates the form state with the latest server data so the user can review the other party's edits without losing their place or making accidental blind overwrites.
+
+#### 4. Why OCC is Optimal for Web CRMs
+* **No Lock Starvation**: Unlike pessimistic locking (which requires holding locks while a user has a modal open), OCC does not lock rows during user think-time.
+* **No Distributed Overhead**: Avoids complex Redis lock leases, TTLs, and WebSocket heartbeats that can leave contacts locked if a user closes their laptop or loses internet connectivity.
+* **High Throughput**: Since write collisions on the same contact are rare in day-to-day sales workflows (< 0.1%), OCC imposes zero latency penalty on successful writes.
