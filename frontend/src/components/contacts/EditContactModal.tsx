@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit2, ShieldAlert } from 'lucide-react';
+import { Edit2 } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
@@ -112,12 +112,9 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
             <Edit2 className="w-4 h-4" />
           </div>
           <span>Edit Contact</span>
-          <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200 ml-auto">
-            Base: v{version}
-          </span>
         </div>
       }
-      description="Update contact details. Changes are protected with optimistic concurrency control."
+      description="Update contact details and save changes."
       footer={
         <div className="flex items-center justify-end gap-2 w-full">
           <Button variant="outline" size="sm" onClick={onClose} disabled={loading}>
@@ -185,14 +182,6 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
             value={company}
             onChange={(e) => setCompany(e.target.value)}
           />
-        </div>
-
-        {/* OCC Notice */}
-        <div className="p-3 rounded-lg bg-blue-50/60 border border-blue-100 text-blue-800 text-[11px] flex items-start gap-2">
-          <ShieldAlert className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-          <p>
-            This update will be committed against record version <strong>v{version}</strong>. If another user saves modifications first, you will be notified to review and reload.
-          </p>
         </div>
       </form>
     </Modal>

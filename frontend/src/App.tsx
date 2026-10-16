@@ -76,7 +76,7 @@ export const App: React.FC = () => {
     }
     setConflictDetails(null);
     refresh();
-    showToast('Loaded latest contact record from server. Please review and save.', 'info');
+    showToast('Loaded latest contact changes. Please review and save.', 'info');
   };
 
   const handleDeleteContact = async () => {

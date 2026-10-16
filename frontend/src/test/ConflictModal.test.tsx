@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { ConflictModal } from '../components/contacts/ConflictModal';
 import type { OccConflictDetails, ContactWithDetails } from '../types';
 
-describe('ConflictModal component (Optimistic Concurrency Control)', () => {
+describe('ConflictModal component', () => {
   const mockConflictDetails: OccConflictDetails<ContactWithDetails> = {
     currentVersion: 3,
     submittedVersion: 2,
@@ -23,7 +23,7 @@ describe('ConflictModal component (Optimistic Concurrency Control)', () => {
     },
   };
 
-  it('renders conflict notice with versions and server snapshot', () => {
+  it('renders conflict notice without technical jargon or version numbers', () => {
     render(
       <ConflictModal
         isOpen={true}
@@ -33,11 +33,14 @@ describe('ConflictModal component (Optimistic Concurrency Control)', () => {
       />
     );
 
-    expect(screen.getByText('Concurrent Update Conflict')).toBeInTheDocument();
-    expect(screen.getByText(/v2/)).toBeInTheDocument(); // submitted version
-    expect(screen.getAllByText(/v3/).length).toBeGreaterThanOrEqual(1); // current version
+    expect(screen.getByText('Update Conflict')).toBeInTheDocument();
+    expect(screen.getByText(/somebody else made changes/i)).toBeInTheDocument();
+    expect(screen.getByText(/someone else updated this contact/i)).toBeInTheDocument();
     expect(screen.getByText('Bruce Wayne')).toBeInTheDocument();
     expect(screen.getByText('Wayne Enterprises')).toBeInTheDocument();
+    expect(screen.queryByText(/v2/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/v3/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/optimistic concurrency control/i)).not.toBeInTheDocument();
   });
 
   it('triggers onReloadLatest when clicking the reload action button', () => {
@@ -51,7 +54,7 @@ describe('ConflictModal component (Optimistic Concurrency Control)', () => {
       />
     );
 
-    const reloadBtn = screen.getByRole('button', { name: /reload latest version/i });
+    const reloadBtn = screen.getByRole('button', { name: /load latest changes/i });
     fireEvent.click(reloadBtn);
     expect(handleReloadLatest).toHaveBeenCalledTimes(1);
   });

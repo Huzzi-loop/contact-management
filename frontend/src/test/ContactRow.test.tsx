@@ -42,7 +42,7 @@ describe('ContactRow component', () => {
     expect(screen.getByText('+1 555-0100')).toBeInTheDocument();
     expect(screen.getByText('Wayne Enterprises')).toBeInTheDocument();
     expect(screen.getByText('BW')).toBeInTheDocument(); // Initials
-    expect(screen.getByText('v3')).toBeInTheDocument(); // Version
+    expect(screen.queryByText('v3')).not.toBeInTheDocument(); // Version removed from UI
     expect(screen.getByText('VIP')).toBeInTheDocument();
     expect(screen.getByText('Customer')).toBeInTheDocument();
   });
