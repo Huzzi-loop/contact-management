@@ -632,4 +632,8 @@ During the planning and implementation phases, several AI suggestions were inten
 * **Rejecting Denormalized Array Tags (`tags: text[]`) for a 3NF Junction Table**:  
   The AI initially suggested storing tags as a string array column directly on the contacts table for simpler single-query reads. I rejected this because it violates 3rd Normal Form (3NF): renaming a tag or changing its color would require an expensive table-wide scan, and it completely prevents enforcing foreign key referential integrity. I insisted on a normalized junction table (`contact_tags`) with composite primary keys, cascading deletes, and batch loading to prevent N+1 queries.
 
+* **Rejecting Heavy Global State Libraries (Redux Toolkit / Zustand) in Favor of Domain Custom Hooks**:  
+  During frontend scaffolding, the AI initially proposed introducing a centralized Redux Toolkit store (or Zustand) with global slices, actions, and thunks to manage contacts, tags, active filters, selection arrays, and modal dialog states. I challenged this approach as unnecessary over-engineering for a focused CRM workspace, pointing out that global state stores introduce heavy boilerplate, action indirection, and bundle bloat. Instead, I mandated a lightweight, highly decoupled custom-hook architecture: `useContacts` encapsulates server-driven querying (search, filtering, pagination, and debounce orchestration), `useContactDetail` handles single-record fetching and activity timeline mutations, React Context (`useToast`) provides lightweight application-wide notification dispatching, and transient UI states (modal visibility, form errors, selection checkboxes) remain strictly localized to prevent unnecessary root-level re-renders.
+
+
 
