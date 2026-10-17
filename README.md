@@ -42,8 +42,8 @@ Follow these steps to get the full stack running locally in under 3 minutes.
 
 ### 2. Clone & Install Dependencies
 ```bash
-git clone <your-repo-url>
-cd crm
+git clone https://github.com/Huzzi-loop/contact-management.git
+cd contact-management
 npm install
 ```
 
@@ -73,6 +73,9 @@ Before running the application or database migrations, set up your environment v
 ### 4. Database Setup & Seeding
 Ensure your target PostgreSQL database exists. Then push the Drizzle schema and seed realistic demo data (contacts, tags, and activity history):
 ```bash
+# Create the database if it doesn't already exist
+createdb crm_db   # or in psql: CREATE DATABASE crm_db;
+
 # Push schema and populate seed data in one step
 npm run db:setup
 ```
@@ -83,7 +86,7 @@ Launch both backend and frontend concurrently with a single command:
 ```bash
 npm run dev
 ```
-* **Frontend Web App**: [http://localhost:5173](http://localhost:5173)
+* **Frontend Web App**: [http://localhost:3000](http://localhost:3000)
 * **Backend API**: [http://localhost:5001](http://localhost:5001) (Health check: [http://localhost:5001/health](http://localhost:5001/health))
 
 > *Tip: You can also run them in separate terminals if preferred using `npm run dev:backend` and `npm run dev:frontend`.*
@@ -91,7 +94,12 @@ npm run dev
 ### 6. Run the Test Suite
 Execute all unit, service, validator, and component tests across the monorepo:
 ```bash
+# Run all tests (backend + frontend)
 npm test
+
+# Or run test suites individually:
+npm test --prefix backend    # 70 unit and validation tests
+npm test --prefix frontend   # 34 component and hook tests
 ```
 
 
@@ -634,6 +642,4 @@ During the planning and implementation phases, several AI suggestions were inten
 
 * **Rejecting Heavy Global State Libraries (Redux Toolkit / Zustand) in Favor of Domain Custom Hooks**:  
   During frontend scaffolding, the AI initially proposed introducing a centralized Redux Toolkit store (or Zustand) with global slices, actions, and thunks to manage contacts, tags, active filters, selection arrays, and modal dialog states. I challenged this approach as unnecessary over-engineering for a focused CRM workspace, pointing out that global state stores introduce heavy boilerplate, action indirection, and bundle bloat. Instead, I mandated a lightweight, highly decoupled custom-hook architecture: `useContacts` encapsulates server-driven querying (search, filtering, pagination, and debounce orchestration), `useContactDetail` handles single-record fetching and activity timeline mutations, React Context (`useToast`) provides lightweight application-wide notification dispatching, and transient UI states (modal visibility, form errors, selection checkboxes) remain strictly localized to prevent unnecessary root-level re-renders.
-
-
 
