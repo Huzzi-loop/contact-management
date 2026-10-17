@@ -555,24 +555,44 @@ At massive scale, querying non-existent keys or performing repeated uniqueness c
 
 ## ⚠️ Known Limitations & Tradeoffs
 
-In alignment with the assignment guidelines, this section outlines intentional boundaries and areas identified for production evolution:
+In alignment with the assignment guidelines, this section outlines intentional boundaries, current architectural omissions, and areas identified for production hardening:
 
-### 1. Entity-Level vs. Field-Level Concurrency
+### 1. Lack of Authentication & Role-Based Access Control (AuthN / AuthZ) — *Primary Focus*
+* **Current Boundary**: The application deliberately omits an identity and authentication layer to focus engineering effort on core contact management, OCC concurrency, auditability, and search performance. All API endpoints and frontend views are currently public and unauthenticated.
+* **Security & Operational Risks**:
+  1. **Unrestricted Data Access & Manipulation**: Any client can read, update, bulk-tag, or soft-delete any contact record without credential verification.
+  2. **Anonymous Audit Logs**: While `contact_activities` captures the *what* (`CONTACT_UPDATED`, `TAG_ADDED`) and *when* (`created_at`), it lacks an `actor_id` (`user_id`). The system cannot audit *who* performed a specific modification or tag assignment.
+  3. **Absence of Multi-Tenancy**: All contacts reside in a shared table without tenant or account isolation (`tenant_id`), creating data leakage risks in a multi-organization environment.
+* **Production Evolution**:
+  1. **Authentication (AuthN)**: Introduce JWT Bearer token authentication or session cookie auth (integrating with providers like Auth0, Clerk, AWS Cognito, or Firebase Auth) verified via Express auth middleware.
+  2. **Role-Based Access Control (RBAC)**: Enforce granular permission scopes:
+     * `Admin`: Full permissions including soft/permanent deletions, global tag creation, and bulk exports.
+     * `Sales Rep / Member`: Read, create, and update contacts assigned to their team; add/remove existing tags.
+     * `Viewer / Auditor`: Read-only access to contacts and activity audit logs.
+  3. **Multi-Tenancy & Row-Level Security (RLS)**: Add a non-nullable `tenant_id` to `contacts`, `tags`, and `contact_activities`, backed by PostgreSQL **Row-Level Security (RLS)** to enforce cryptographically secure tenant isolation at the database engine level.
+  4. **Actor-Linked Audit Trails**: Add an `actor_id` foreign key to `contact_activities` so every mutation is permanently attributed to an authenticated user.
+
+### 2. API Security, Rate Limiting & Network Hardening
+* **Current Boundary**: The API relies on input schema validation (Joi) and CORS configuration, but lacks active defense-in-depth security middleware.
+* **Risks**:
+  * **Endpoint Abuse & DoS**: Unrestricted endpoints (e.g., multi-field substring search or bulk tagging) are susceptible to automated scraping, query spamming, or resource exhaustion.
+  * **Missing Hardening Headers**: Default Express responses do not include strict HTTP security headers (HSTS, CSP, X-Frame-Options).
+* **Production Evolution**:
+  * **Distributed Rate Limiting**: Deploy `express-rate-limit` paired with a Redis store to throttle requests per IP / user token (e.g., 100 req/min for general routes, 20 req/min for bulk updates).
+  * **Security Headers**: Integrate `helmet` middleware for automated CSP, clickjacking prevention, and MIME-sniffing protection.
+  * **GDPR & PII Compliance**: Implement an automated data retention worker and a GDPR-compliant "Right to be Forgotten" pipeline that cryptographically anonymizes soft-deleted contacts after 30 days.
+
+### 3. Entity-Level vs. Field-Level Concurrency
 * **Current Boundary**: The application employs whole-entity Optimistic Concurrency Control using an integer `version` field.
 * **Tradeoff**: If User A updates a contact's `phone` while User B concurrently updates their `company`, User A’s update triggers a `409 Conflict` requiring user review, even though the modified attributes are disjoint.
 * **Production Evolution**: As detailed in [Scale Considerations](#3-intelligent-concurrency-field-level-auto-merging), a mature enterprise deployment would implement 3-way field-level diffing to auto-merge non-overlapping attribute edits while reserving 409 conflicts strictly for identical field collisions.
 
-### 2. Offset-Based Pagination at Deep Offsets
-* **Current Boundary**: Paging is handled via SQL `LIMIT :limit OFFSET :offset`.
-* **Tradeoff**: This design was chosen intentionally to provide random-access navigation ("Jump to page 5") and display exact total record counts (`meta.totalPages`) in the tabular workspace. However, performance degrades on very deep pages (e.g. page 50,000) as PostgreSQL must scan and discard all preceding rows.
-* **Production Evolution**: At tens of millions of records, sequential browsing should transition to keyset / cursor pagination (`WHERE (created_at, id) < (:cursor_created_at, :cursor_id)`), running in constant $O(1)$ time.
-
-### 3. Direct Substring Search via `ILIKE`
+### 4. Direct Substring Search via `ILIKE`
 * **Current Boundary**: Search queries evaluate substrings using PostgreSQL `ILIKE` over concatenated name, email, and phone attributes.
 * **Tradeoff**: While clean, performant, and zero-dependency for tens of thousands of records, wildcard pattern matching (`%term%`) forces sequential table scans without specialized indexes.
-* **Production Evolution**: For enterprise scale with millions of records, search workloads should be offloaded to an **Elasticsearch/OpenSearch** cluster or accelerated natively with PostgreSQL **trigram GIN indexes (`pg_trgm`)**.
+* **Production Evolution**: As detailed in [Scale Considerations](#4-frequent-searches-and-multi-attribute-filtering), enterprise scale with millions of records would accelerate searches using PostgreSQL **trigram GIN indexes (`pg_trgm`)** or a dedicated **Elasticsearch/OpenSearch** cluster.
 
-### 4. Append-Only Audit History Growth
+### 5. Append-Only Audit History Growth
 * **Current Boundary**: Every contact update, tag addition, and removal appends an immutable record to `contact_activities`.
 * **Tradeoff**: While providing strict auditability and compliance, high-write environments will cause the audit table to grow rapidly without an automated retention or partitioning policy.
 * **Production Evolution**: Implement range partitioning on `contact_activities` by `created_at` (e.g. monthly partitions), archiving records older than 90 days to cloud cold storage (S3/GCS Parquet).
